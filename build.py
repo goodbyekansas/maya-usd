@@ -267,7 +267,7 @@ def RunCMake(context, extraArgs=None, stages=None):
             os.remove(context.logFileLocation)
 
         if 'configure' in stages:
-            Run('cmake '
+            Run('cmake3 '
                 '-DCMAKE_INSTALL_PREFIX="{instDir}" '
                 '-DCMAKE_BUILD_TYPE={variant} '
                 '-DCMAKE_EXPORT_COMPILE_COMMANDS=ON'
@@ -287,7 +287,7 @@ def RunCMake(context, extraArgs=None, stages=None):
             installArg = "--target install"
 
         if 'build' in stages or 'install' in stages:
-            Run("cmake --build . --config {variant} {installArg} -- {multiproc}"
+            Run("cmake3 --build . --config {variant} {installArg} -- {multiproc}"
                 .format(variant=variant,
                         installArg=installArg,
                         multiproc=FormatMultiProcs(context.numJobs, generator)))
