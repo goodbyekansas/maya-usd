@@ -18,7 +18,7 @@ pxr_setup_python()
 #==============================================================================
 # Packages 
 #==============================================================================
-#find_package(Maya REQUIRED)
+find_package(Maya REQUIRED)
 
 include(${USD_CONFIG_FILE})
 

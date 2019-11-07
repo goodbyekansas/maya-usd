@@ -50,7 +50,7 @@
                     }
                 }
             },
-            "Name": "@PLUG_INFO_PLUGIN_NAME@",
+            "Name": "pxr.pxrUsdTranslators",
             "Type": "python"
         }
     ]

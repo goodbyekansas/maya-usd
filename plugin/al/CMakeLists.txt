@@ -25,7 +25,7 @@ endif()
 
 include(${USD_CONFIG_FILE})
 
-#find_package(Maya)
+find_package(Maya)
 
 # to get PYTHON_EXECUTABLE
 find_package(PythonInterp)

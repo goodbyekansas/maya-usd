@@ -134,7 +134,7 @@ protected:
     ///
     /// \sa UsdSchemaType
     AL_USDMAYASCHEMAS_API
-    virtual UsdSchemaType _GetSchemaType() const;
+    UsdSchemaType _GetSchemaType() const override;
 
 private:
     // needs to invoke _GetStaticTfType.
@@ -146,7 +146,7 @@ private:
 
     // override SchemaBase virtuals.
     AL_USDMAYASCHEMAS_API
-    virtual const TfType &_GetTfType() const;
+    const TfType &_GetTfType() const override;
 
 public:
     // --------------------------------------------------------------------- //

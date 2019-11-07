@@ -12,7 +12,7 @@
                     }
                 }
             },
-            "Name": "@PLUG_INFO_PLUGIN_NAME@",
+            "Name": "pxr.pxrUsd",
             "Type": "python"
         }
     ]
