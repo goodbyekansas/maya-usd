@@ -307,8 +307,8 @@ MBoundingBox Transform::boundingBox() const
   // grab prim from the dataBlock
   UsdPrim prim  = transform()->prim();
 
-  // check for a geometry type underneath this transform
-  if(prim && prim.GetTypeName() == "Mesh")
+  // check if transformable and compute bounds accordingly.
+  if(prim && prim.IsA<UsdGeomXformable>())
   {
     UsdGeomMesh geom(prim);
     const TfToken token("default");
@@ -318,7 +318,12 @@ MBoundingBox Transform::boundingBox() const
     const GfVec3d minMax = range.GetMax();
     const MVector minBound(minMin[0], minMin[1], minMin[2]);
     const MVector maxBound(minMax[0], minMax[1], minMax[2]);
-    return MBoundingBox(minBound, maxBound);
+    MBoundingBox bbox(minBound, maxBound);
+    MMatrix mayaMx;
+    const double* matrixArray = box.GetMatrix().GetArray();
+    std::copy(matrixArray, matrixArray+16, mayaMx[0]);
+    bbox.transformUsing(mayaMx);
+    return bbox;
   }
   return MPxTransform::boundingBox();
 }
