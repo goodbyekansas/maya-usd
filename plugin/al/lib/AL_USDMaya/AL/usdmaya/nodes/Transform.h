@@ -80,6 +80,7 @@ namespace nodes {
 /// \ingroup nodes
 //----------------------------------------------------------------------------------------------------------------------
 
+
 #if MAYA_API_VERSION >= 20190200 && MAYA_API_VERSION < 20200000
 class Transform
   : public MPxTransform_BoundingBox,
