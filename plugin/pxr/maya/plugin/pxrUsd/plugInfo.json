@@ -12,8 +12,8 @@
                     }
                 }
             },
-            "Name": "pxr.pxrUsd",
-            "Type": "python"
+            "Name": "@PLUG_INFO_PLUGIN_NAME@",
+            "Type": "resource"
         }
     ]
 }
