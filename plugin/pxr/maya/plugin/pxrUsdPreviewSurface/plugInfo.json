@@ -11,11 +11,10 @@
                     }
                 }
             },
-            "LibraryPath": "",
             "Name": "pxrUsdPreviewSurface",
-            "ResourcePath": "resources",
-            "Root": "..",
-            "Type": "library"
+            "ResourcePath": "@PLUG_INFO_RESOURCE_PATH@",
+            "Root": "@PLUG_INFO_ROOT@",
+            "Type": "resource"
         }
     ]
 }
