@@ -724,6 +724,8 @@ ProxyShape::ProxyShape()
   m_hierarchyIterationLogics[0] = &m_findExcludedPrims;
   m_hierarchyIterationLogics[1] = &m_findUnselectablePrims;
   m_hierarchyIterationLogics[2] = &m_findLockedPrims;
+
+  triggerEvent("PostConstructProxyShape");
 }
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -2425,6 +2427,7 @@ void ProxyShape::registerEvents()
   registerEvent("EditTargetChanged", AL::event::kUSDMayaEventType);
   registerEvent("SelectionStarted", AL::event::kUSDMayaEventType);
   registerEvent("SelectionEnded", AL::event::kUSDMayaEventType);
+  registerEvent("PostConstructProxyShape", AL::event::kUSDMayaEventType);
 }
 
 //----------------------------------------------------------------------------------------------------------------------

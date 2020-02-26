@@ -428,7 +428,8 @@ UsdMayaTransformWriter::_PushTransformStack(
             }
             if(!foundOp) {
                 animChan.op = usdXformable.AddXformOp(
-                animChan.usdOpType, animChan.precision,
+                animChan.usdOpType,
+                animChan.precision,
                 animChan.opName,
                 animChan.isInverse);
             }
