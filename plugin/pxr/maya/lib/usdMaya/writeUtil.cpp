@@ -1006,7 +1006,11 @@ UsdMayaWriteUtil::WriteMetadataToPrim(
     }
 
     for (const auto& keyValue : adaptor.GetAllAuthoredMetadata()) {
-        prim.SetMetadata(keyValue.first, keyValue.second);
+        TfToken val;
+        prim.GetMetadata(keyValue.first, &val);
+        if(val != keyValue.second) {
+            prim.SetMetadata(keyValue.first, keyValue.second);
+        }
     }
     return true;
 }

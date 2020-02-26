@@ -261,8 +261,12 @@ UsdMaya_WriteJob::_BeginWriting(const std::string& fileName, bool append)
 
     // Set time range for the USD file if we're exporting animation.
     if (!mJobCtx.mArgs.timeSamples.empty()) {
-        mJobCtx.mStage->SetStartTimeCode(mJobCtx.mArgs.timeSamples.front());
-        mJobCtx.mStage->SetEndTimeCode(mJobCtx.mArgs.timeSamples.back());
+        if(double(mJobCtx.mStage->GetStartTimeCode()) != double(mJobCtx.mArgs.timeSamples.front())) {
+            mJobCtx.mStage->SetStartTimeCode(mJobCtx.mArgs.timeSamples.front());
+        }
+        if(double(mJobCtx.mStage->GetEndTimeCode()) != double(mJobCtx.mArgs.timeSamples.back())) {
+            mJobCtx.mStage->SetEndTimeCode(mJobCtx.mArgs.timeSamples.back());
+        }
     }
 
     // Setup the requested render layer mode:
@@ -504,7 +508,10 @@ UsdMaya_WriteJob::_FinishWriting()
     if (MGlobal::isZAxisUp()){
         upAxis = UsdGeomTokens->z;
     }
-    UsdGeomSetStageUpAxis(mJobCtx.mStage, upAxis);
+    TfToken currentUpAxis = UsdGeomGetStageUpAxis(mJobCtx.mStage);
+    if(currentUpAxis != upAxis) {
+        UsdGeomSetStageUpAxis(mJobCtx.mStage, upAxis);
+    }
 
     // XXX Currently all distance values are written directly to USD, and will
     // be in centimeters (Maya's internal unit) despite what the users UIUnit
@@ -516,9 +523,12 @@ UsdMaya_WriteJob::_FinishWriting()
             "All distance values will be exported in Maya's internal "
             "distance unit.");
     }
-    UsdGeomSetStageMetersPerUnit(
-        mJobCtx.mStage, 
-        UsdMayaUtil::ConvertMDistanceUnitToUsdGeomLinearUnit(mayaInternalUnit));
+    double meters_per_unit = UsdGeomGetStageMetersPerUnit(mJobCtx.mStage);
+    if(meters_per_unit != UsdMayaUtil::ConvertMDistanceUnitToUsdGeomLinearUnit(mayaInternalUnit)) {
+        UsdGeomSetStageMetersPerUnit(
+            mJobCtx.mStage,
+            UsdMayaUtil::ConvertMDistanceUnitToUsdGeomLinearUnit(mayaInternalUnit));
+    }
 
     if (usdRootPrim){
         // We have already decided above that 'usdRootPrim' is the important

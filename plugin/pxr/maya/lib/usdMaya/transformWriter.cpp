@@ -414,10 +414,24 @@ UsdMayaTransformWriter::_PushTransformStack(
     // including the inverse ones if needed
     TF_FOR_ALL(iter, _animChannels) {
         _AnimChannel& animChan = *iter;
-        animChan.op = usdXformable.AddXformOp(
-            animChan.usdOpType, animChan.precision,
-            animChan.opName,
-            animChan.isInverse);
+            bool resetsXformStack;
+            bool foundOp = false;
+            std::vector<UsdGeomXformOp> ops =
+                    usdXformable.GetOrderedXformOps(&resetsXformStack);
+            for (auto op_iter = ops.begin(); op_iter != ops.end(); ++op_iter) {
+                const UsdGeomXformOp& thisOp = *op_iter;
+                if (thisOp.GetOpType() == animChan.usdOpType) {
+                        animChan.op = thisOp;
+                        foundOp = true;
+                        break;
+                }
+            }
+            if(!foundOp) {
+                animChan.op = usdXformable.AddXformOp(
+                animChan.usdOpType, animChan.precision,
+                animChan.opName,
+                animChan.isInverse);
+            }
         if (!animChan.op) {
             TF_CODING_ERROR("Could not add xform op");
             animChan.op = UsdGeomXformOp();

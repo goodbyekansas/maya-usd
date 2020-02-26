@@ -79,6 +79,72 @@ TF_DEFINE_PRIVATE_TOKENS(_tokens,
 );
 
 
+static
+bool
+_GetAssetInfo(
+        const UsdPrim& prim,
+        std::string* assetIdentifier,
+        SdfPath* assetPrimPath)
+{
+    UsdModelAPI usdModel(prim);
+    SdfAssetPath identifier;
+    if (!usdModel.GetAssetIdentifier(&identifier)) {
+        return false;
+    }
+
+    *assetIdentifier = identifier.GetAssetPath();
+    // We are assuming the target asset will have defaultPrim.
+    *assetPrimPath = SdfPath();
+    return true;
+}
+
+static
+bool
+_GetReferenceInfo(
+        const UsdPrim& prim,
+        std::string* assetIdentifier,
+        SdfPath* assetPrimPath)
+{
+    SdfReferenceListOp refsOp;
+    SdfReferenceListOp::ItemVector refs;
+    prim.GetMetadata(SdfFieldKeys->References, &refsOp);
+    refsOp.ApplyOperations(&refs);
+
+    // this logic is not robust.  awaiting bug 99278.
+    if (!refs.empty()) {
+        const SdfReference& ref = refs[0];
+        *assetIdentifier = ref.GetAssetPath();
+        *assetPrimPath = ref.GetPrimPath();
+        return true;
+    }
+
+    return false;
+}
+
+static
+bool
+_AddReference(
+    UsdReferences& refs,
+    const UsdPrim& prim,
+    std::string refAssetPath,
+    SdfPath refPrimPath = SdfPath())
+{
+    if (prim.HasAuthoredReferences()){
+        std::string assetIdentifier;
+        SdfPath assetPrimPath;
+        _GetReferenceInfo(prim, &assetIdentifier, &assetPrimPath);
+        if (!assetIdentifier.empty() && (refAssetPath != assetIdentifier)){
+             if(!refPrimPath.IsEmpty()) {
+                refs.AddReference(SdfReference(refAssetPath, refPrimPath));
+             }
+             else {
+                refs.AddReference(SdfReference(refAssetPath));
+             }
+        }
+    }
+}
+
+
 /* static */
 bool
 UsdMayaTranslatorModelAssembly::Create(
@@ -92,8 +158,11 @@ UsdMayaTranslatorModelAssembly::Create(
     context->SetExportsGprims(false);
     context->SetPruneChildren(true);
     context->SetModelPaths({authorPath});
+    UsdPrim prim = stage->GetPrimAtPath(authorPath);
+    if(!prim){
+        prim = stage->DefinePrim(authorPath);
+    }
 
-    UsdPrim prim = stage->DefinePrim(authorPath);
     if (!prim) {
         TF_RUNTIME_ERROR(
                 "Failed to create prim for USD reference assembly at path <%s>",
@@ -148,12 +217,12 @@ UsdMayaTranslatorModelAssembly::Create(
             }
 
             if (refPrimPathStr.empty()) {
-                refs.AddReference(refAssetPath);
+                _AddReference(refs, prim, refAssetPath);
             } else {
                 SdfPath refPrimPath(refPrimPathStr);
 
                 if (refPrimPath.IsRootPrimPath()) {
-                    refs.AddReference(SdfReference(refAssetPath, refPrimPath));
+                    _AddReference(refs, prim, refAssetPath, refPrimPath);
                 } else {
                     TF_RUNTIME_ERROR(
                             "Not creating reference for assembly node '%s' "
@@ -204,7 +273,10 @@ UsdMayaTranslatorModelAssembly::Create(
             for (const auto& varSels: usdRefAssem->GetVariantSetSelections()) {
                 const std::string& variantSetName = varSels.first;
                 const std::string& variant = varSels.second;
-                prim.GetVariantSet(variantSetName).SetVariantSelection(variant);
+                auto vset = prim.GetVariantSet(variantSetName);
+                if(vset.GetVariantSelection() != variant) {
+                    vset.SetVariantSelection(variant);
+                }
             }
         }
     }
@@ -264,47 +336,7 @@ UsdMayaTranslatorModelAssembly::Create(
     return true;
 }
 
-static
-bool
-_GetAssetInfo(
-        const UsdPrim& prim,
-        std::string* assetIdentifier,
-        SdfPath* assetPrimPath)
-{
-    UsdModelAPI usdModel(prim);
-    SdfAssetPath identifier;
-    if (!usdModel.GetAssetIdentifier(&identifier)) {
-        return false;
-    }
 
-    *assetIdentifier = identifier.GetAssetPath();
-    // We are assuming the target asset will have defaultPrim.
-    *assetPrimPath = SdfPath();
-    return true;
-}
-
-static
-bool
-_GetReferenceInfo(
-        const UsdPrim& prim,
-        std::string* assetIdentifier,
-        SdfPath* assetPrimPath)
-{
-    SdfReferenceListOp refsOp;
-    SdfReferenceListOp::ItemVector refs;
-    prim.GetMetadata(SdfFieldKeys->References, &refsOp);
-    refsOp.ApplyOperations(&refs);
-
-    // this logic is not robust.  awaiting bug 99278.
-    if (!refs.empty()) {
-        const SdfReference& ref = refs[0];
-        *assetIdentifier = ref.GetAssetPath();
-        *assetPrimPath = ref.GetPrimPath();
-        return true;
-    }
-
-    return false;
-}
 
 /* static */
 bool
