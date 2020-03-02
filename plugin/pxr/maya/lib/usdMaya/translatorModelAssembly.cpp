@@ -129,17 +129,21 @@ _AddReference(
     std::string refAssetPath,
     SdfPath refPrimPath = SdfPath())
 {
+    bool addReference = true;
     if (prim.HasAuthoredReferences()){
         std::string assetIdentifier;
         SdfPath assetPrimPath;
         _GetReferenceInfo(prim, &assetIdentifier, &assetPrimPath);
-        if (!assetIdentifier.empty() && (refAssetPath != assetIdentifier)){
-             if(!refPrimPath.IsEmpty()) {
-                refs.AddReference(SdfReference(refAssetPath, refPrimPath));
-             }
-             else {
-                refs.AddReference(SdfReference(refAssetPath));
-             }
+        if (assetIdentifier.empty() || (refAssetPath == assetIdentifier)){
+            addReference = false;
+        }
+    }
+    if( addReference ) {
+        if(!refPrimPath.IsEmpty()) {
+            refs.AddReference(SdfReference(refAssetPath, refPrimPath));
+        }
+        else {
+            refs.AddReference(SdfReference(refAssetPath));
         }
     }
 }
