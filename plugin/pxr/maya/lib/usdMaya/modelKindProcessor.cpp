@@ -229,7 +229,7 @@ UsdMaya_ModelKindProcessor::_FixUpPrimKinds(
         // The kind of the root prim under which each reference was authored
         // informs how we will fix-up/fill-in kind on it and its ancestors.
         UsdPrim prim = stage->GetPrimAtPath(path);
-        if (!prim || !prim.IsDefined()) {
+        if (!prim) {
             continue;
         }
 
