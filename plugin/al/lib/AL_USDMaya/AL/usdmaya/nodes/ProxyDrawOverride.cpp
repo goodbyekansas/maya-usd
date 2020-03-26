@@ -30,6 +30,9 @@
 #include "maya/MSelectionContext.h"
 #endif
 
+#include "pxr/usd/usd/modelAPI.h"
+#include "pxr/usd/kind/registry.h"
+
 #if defined(WANT_UFE_BUILD)
 #include "AL/usdmaya/TypeIDs.h"
 #include "pxr/base/arch/env.h"
@@ -43,6 +46,41 @@ namespace AL {
 namespace usdmaya {
 namespace nodes {
 namespace {
+
+
+//----------------------------------------------------------------------------------------------------------------------
+/// \brief Retarget a prim based on the AL_USDMaya's pick mode settings. This will either return new prim to select,
+///        or the original prim if no retargetting occurred.
+/// \param prim Attempt to retarget this prim.
+/// \return The retargetted prim, or the original.
+UsdPrim retargetSelectPrim(const UsdPrim &prim)
+{
+  switch(ProxyShape::PickMode(MGlobal::optionVarIntValue("AL_usdmaya_pickMode"))){
+
+    // Read up prim hierarchy and return first Model kind ancestor as the target prim
+    case ProxyShape::PickMode::kModels:
+    {
+      auto tmpPrim = prim;
+      while(tmpPrim.IsValid()) {
+        TfToken kind;
+        UsdModelAPI(tmpPrim).GetKind(&kind);
+        if (KindRegistry::GetInstance().IsA(kind, KindTokens->model)) {
+          return tmpPrim;
+        }
+        tmpPrim = tmpPrim.GetParent();
+      }
+    }
+
+    case ProxyShape::PickMode::kPrims:
+    case ProxyShape::PickMode::kInstances:
+    default:
+    {
+      break;
+    }
+  }
+  return prim;
+}
+
 //----------------------------------------------------------------------------------------------------------------------
 /// \brief  user data struct - holds the info needed to render the scene
 //----------------------------------------------------------------------------------------------------------------------
@@ -636,7 +674,8 @@ bool ProxyDrawOverride::userSelect(
     for(const auto& it : hitBatch)
     {
       auto path = getHitPath(it).StripAllVariantSelections();
-      auto obj = proxyShape->findRequiredPath(path);
+      auto retargetedHitPrim = retargetSelectPrim(proxyShape->getUsdStage()->GetPrimAtPath(path));
+      auto obj = proxyShape->findRequiredPath(retargetedHitPrim.GetPath());
       if (obj != MObject::kNullObj) 
       {
         MFnDagNode dagNode(obj);
@@ -817,6 +856,17 @@ bool ProxyDrawOverride::userSelect(
     else
     {
 #endif
+
+      // Massage hit paths to align with pick mode policy
+      for (std::size_t i = 0; i < paths.size(); ++i)
+      {
+        const auto& path = paths[i];
+        const auto retargetedPrim = retargetSelectPrim(proxyShape->getUsdStage()->GetPrimAtPath(path));
+        if (retargetedPrim.GetPath() != path)
+        {
+          paths[i] = retargetedPrim.GetPath();
+        }
+      }
       switch (listAdjustment)
       {
       case MGlobal::kReplaceList:
