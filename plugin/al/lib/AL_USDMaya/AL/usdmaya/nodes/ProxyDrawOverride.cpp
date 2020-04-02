@@ -40,6 +40,7 @@
 #include "ufe/runTimeMgr.h"
 #include "ufe/globalSelection.h"
 #include "ufe/observableSelection.h"
+#include "ufe/log.h"
 #endif
 
 namespace AL {
@@ -351,7 +352,11 @@ void ProxyDrawOverride::draw(const MHWRender::MDrawContext& context, const MUser
               MMatrix value;
               lightParam->getParameter(paramNames[i], value);
               GfMatrix4d m(value.matrix);
+#if HDX_API_VERSION >= 6
+              light.SetShadowMatrices({m});
+#else
               light.SetShadowMatrix(m);
+#endif
             }
             break;
           case MHWRender::MLightParameterInformation::kShadowColor:
@@ -423,17 +428,10 @@ void ProxyDrawOverride::draw(const MHWRender::MDrawContext& context, const MUser
     int originX, originY, width, height;
     context.getViewportDimensions(originX, originY, width, height);
 
-    #if (PXR_MAJOR_VERSION > 0) || (PXR_MINOR_VERSION >= 19 && PXR_PATCH_VERSION >= 7) 
     engine->SetCameraState(
         GfMatrix4d(context.getMatrix(MHWRender::MFrameContext::kViewMtx).matrix),
         GfMatrix4d(context.getMatrix(MHWRender::MFrameContext::kProjectionMtx).matrix));
     engine->SetRenderViewport(GfVec4d(originX, originY, width, height));
-    #else
-    engine->SetCameraState(
-        GfMatrix4d(context.getMatrix(MHWRender::MFrameContext::kViewMtx).matrix),
-        GfMatrix4d(context.getMatrix(MHWRender::MFrameContext::kProjectionMtx).matrix),
-        GfVec4d(originX, originY, width, height));
-    #endif
 
     engine->SetRootTransform(GfMatrix4d(ptr->m_objPath.inclusiveMatrix().matrix));
 
@@ -444,9 +442,6 @@ void ProxyDrawOverride::draw(const MHWRender::MDrawContext& context, const MUser
     combined.reserve(paths1.size() + paths2.size());
     combined.insert(combined.end(), paths1.begin(), paths1.end());
     combined.insert(combined.end(), paths2.begin(), paths2.end());
-
-    engine->SetSelected(combined);
-    engine->SetSelectionColor(GfVec4f(1.0f, 2.0f/3.0f, 0.0f, 1.0f));
 
     ptr->m_params.frame = ptr->m_shape->outTimePlug().asMTime().as(MTime::uiUnit());
     engine->Render(ptr->m_rootPrim, ptr->m_params);
@@ -663,7 +658,7 @@ bool ProxyDrawOverride::userSelect(
   };
 
 
-  auto addSelection = [&hitBatch, &selectInfo, &selectionList,
+  auto addSelection = [&hitBatch, &selectionList,
     &worldSpaceHitPts, proxyShape, &selected,
     &getHitPath] (const MString& command)
   {
@@ -757,7 +752,7 @@ bool ProxyDrawOverride::userSelect(
     {
       paths.reserve(hitBatch.size());
 
-      auto addHit = [&engine, &paths, &getHitPath](Engine::HitBatch::const_reference& it)
+      auto addHit = [&paths, &getHitPath](Engine::HitBatch::const_reference& it)
       {
         paths.push_back(getHitPath(it));
       };
@@ -848,6 +843,10 @@ bool ProxyDrawOverride::userSelect(
             {
               globalSelection->append(si);
             }
+            break;
+          case MGlobal::kAddToHeadOfList:
+            // No such operation on UFE selection.
+            UFE_LOG("UFE does not support prepend to selection.");
             break;
           }
         }

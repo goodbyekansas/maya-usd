@@ -36,6 +36,9 @@
 #include "pxr/base/arch/fileSystem.h"
 #include "pxr/base/tf/pathUtils.h"
 
+#include <string>
+#include <algorithm>
+
 PXR_NAMESPACE_USING_DIRECTIVE
 
 namespace AL {
@@ -58,12 +61,23 @@ const char* buildTempPath(const char* const filename)
 
     _temp_subdir += AL_PATH_CHAR;
   }
-  
+
+  std::string full_path = _temp_subdir + filename;
+  std::replace(full_path.begin(), full_path.end(), '\\', '/');
+
   static char temp_file[512];
-  std::strcpy(temp_file, _temp_subdir.data());
-  std::strcpy(temp_file + _temp_subdir.size(), filename);
+  std::strcpy(temp_file, full_path.data());
 
   return temp_file;
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+void compareTempPaths(std::string pathA, std::string pathB)
+{
+  std::replace(pathA.begin(), pathA.end(), '\\', '/');
+  std::replace(pathB.begin(), pathB.end(), '\\', '/');
+
+  EXPECT_EQ(pathA, pathB);
 }
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -381,7 +395,7 @@ void randomPlug(MPlug plug)
       for(int i = 0; i < 511; ++i)
       {
         char tempStr[2048];
-        sprintf(tempStr, "setAttr \"%s[%d]\" -type \"matrix\" %lf %lf %lf %lf  %lf %lf %lf %lf  %lf %lf %lf %lf  %lf %lf %lf %lf;",
+        snprintf(tempStr, 2048, "setAttr \"%s[%d]\" -type \"matrix\" %lf %lf %lf %lf  %lf %lf %lf %lf  %lf %lf %lf %lf  %lf %lf %lf %lf;",
             plug.name().asChar(),
             i,
             randDouble(),
@@ -631,10 +645,10 @@ void randomNode(MObject node, const char* const attributeNames[], const uint32_t
 }
 
 //----------------------------------------------------------------------------------------------------------------------
-void randomAnimatedValue(MPlug plug, double startFrame, double endFrame)
+void randomAnimatedValue(MPlug plug, double startFrame, double endFrame, bool forceKeyframe)
 {
   // If value is not keyable, set it to be a random value
-  if (!plug.isKeyable())
+  if (!forceKeyframe && !plug.isKeyable())
   {
     randomPlug(plug);
     return;
@@ -671,7 +685,7 @@ void randomAnimatedValue(MPlug plug, double startFrame, double endFrame)
 }
 
 //----------------------------------------------------------------------------------------------------------------------
-void randomAnimatedNode(MObject node, const char* const attributeNames[], const uint32_t attributeCount, double startFrame, double endFrame)
+void randomAnimatedNode(MObject node, const char* const attributeNames[], const uint32_t attributeCount, double startFrame, double endFrame, bool forceKeyframe)
 {
   MStatus status;
   MFnDependencyNode fn(node);
@@ -691,15 +705,15 @@ void randomAnimatedNode(MObject node, const char* const attributeNames[], const 
           case MFnNumericData::kDouble:
           case MFnNumericData::kBoolean:
           {
-            randomAnimatedValue(plug, startFrame, endFrame);
+            randomAnimatedValue(plug, startFrame, endFrame, forceKeyframe);
             break;
           }
           case MFnNumericData::k3Float:
           case MFnNumericData::k3Double:
           {
-            randomAnimatedValue(plug.child(0), startFrame, endFrame);
-            randomAnimatedValue(plug.child(1), startFrame, endFrame);
-            randomAnimatedValue(plug.child(2), startFrame, endFrame);
+            randomAnimatedValue(plug.child(0), startFrame, endFrame, forceKeyframe);
+            randomAnimatedValue(plug.child(1), startFrame, endFrame, forceKeyframe);
+            randomAnimatedValue(plug.child(2), startFrame, endFrame, forceKeyframe);
             break;
           }
           default:
@@ -713,15 +727,15 @@ void randomAnimatedNode(MObject node, const char* const attributeNames[], const 
       case MFn::kFloatLinearAttribute:
       case MFn::kDoubleLinearAttribute:
       {
-        randomAnimatedValue(plug, startFrame, endFrame);
+        randomAnimatedValue(plug, startFrame, endFrame, forceKeyframe);
         break;
       }
       case MFn::kAttribute3Double:
       case MFn::kAttribute3Float:
       {
-        randomAnimatedValue(plug.child(0), startFrame, endFrame);
-        randomAnimatedValue(plug.child(1), startFrame, endFrame);
-        randomAnimatedValue(plug.child(2), startFrame, endFrame);
+        randomAnimatedValue(plug.child(0), startFrame, endFrame, forceKeyframe);
+        randomAnimatedValue(plug.child(1), startFrame, endFrame, forceKeyframe);
+        randomAnimatedValue(plug.child(2), startFrame, endFrame, forceKeyframe);
         break;
       }
       case MFn::kEnumAttribute:

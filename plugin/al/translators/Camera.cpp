@@ -116,6 +116,8 @@ MStatus Camera::updateAttributes(MObject to, const UsdPrim& prim)
   bool isOrthographic = (projection == UsdGeomTokens->orthographic);
   AL_MAYA_CHECK_ERROR(DgNodeTranslator::setBool(to, m_orthographic, isOrthographic), errorString);
 
+  NewNodesCollector collector{context(), prim};
+
   // Horizontal film aperture
   auto horizontalApertureAttr = usdCamera.GetHorizontalApertureAttr();
   if(!horizontalApertureAttr.GetNumTimeSamples() || forceDefaultRead)
@@ -129,7 +131,8 @@ MStatus Camera::updateAttributes(MObject to, const UsdPrim& prim)
     DgNodeTranslator::setFloatAttrAnim(to,
                                        m_horizontalFilmAperture,
                                        horizontalApertureAttr,
-                                       mm_to_inches);
+                                       mm_to_inches,
+                                       collector.nodeContainerPtr());
   }
 
   // Vertical film aperture
@@ -145,7 +148,8 @@ MStatus Camera::updateAttributes(MObject to, const UsdPrim& prim)
     DgNodeTranslator::setFloatAttrAnim(to,
                                        m_verticalFilmAperture,
                                        verticalApertureAttr,
-                                       mm_to_inches);
+                                       mm_to_inches,
+                                       collector.nodeContainerPtr());
   }
 
   // Horizontal film aperture offset
@@ -161,7 +165,8 @@ MStatus Camera::updateAttributes(MObject to, const UsdPrim& prim)
     DgNodeTranslator::setFloatAttrAnim(to,
                                        m_horizontalFilmApertureOffset,
                                        horizontalApertureOffsetAttr,
-                                       mm_to_inches);
+                                       mm_to_inches,
+                                       collector.nodeContainerPtr());
   }
 
   // Vertical film aperture offset
@@ -177,7 +182,8 @@ MStatus Camera::updateAttributes(MObject to, const UsdPrim& prim)
     DgNodeTranslator::setFloatAttrAnim(to,
                                        m_verticalFilmApertureOffset,
                                        verticalApertureOffsetAttr,
-                                       mm_to_inches);
+                                       mm_to_inches,
+                                       collector.nodeContainerPtr());
   }
 
   // Focal length
@@ -190,15 +196,23 @@ MStatus Camera::updateAttributes(MObject to, const UsdPrim& prim)
   }
   else
   {
-    DgNodeTranslator::setFloatAttrAnim(to, m_focalLength, focalLengthAttr);
+    DgNodeTranslator::setFloatAttrAnim(to, m_focalLength, focalLengthAttr, 1.0f, collector.nodeContainerPtr());
   }
 
   // Near/far clip planes
-  // N.B. Animated clip plane values not supported
-  GfVec2f clippingRange;
-  usdCamera.GetClippingRangeAttr().Get(&clippingRange, timeCode);
-  AL_MAYA_CHECK_ERROR(DgNodeTranslator::setDistance(to, m_nearDistance, MDistance(clippingRange[0], MDistance::kCentimeters)), errorString);
-  AL_MAYA_CHECK_ERROR(DgNodeTranslator::setDistance(to, m_farDistance, MDistance(clippingRange[1], MDistance::kCentimeters)), errorString);
+  auto clippingRangeAttr = usdCamera.GetClippingRangeAttr();
+  if (!clippingRangeAttr.GetNumTimeSamples() || forceDefaultRead)
+  {
+    GfVec2f clippingRange;
+    clippingRangeAttr.Get(&clippingRange, timeCode);
+    AL_MAYA_CHECK_ERROR(DgNodeTranslator::setDistance(to, m_nearDistance, MDistance(clippingRange[0], MDistance::kCentimeters)), errorString);
+    AL_MAYA_CHECK_ERROR(DgNodeTranslator::setDistance(to, m_farDistance, MDistance(clippingRange[1], MDistance::kCentimeters)), errorString);
+  }
+  else
+  {
+    DgNodeTranslator::setClippingRangeAttrAnim(to, m_nearDistance, m_farDistance, clippingRangeAttr, collector.nodeContainerPtr());
+  }
+
   return MS::kSuccess;
 }
 
@@ -227,6 +241,7 @@ MStatus Camera::import(const UsdPrim& prim, MObject& parent, MObject& createdObj
   MObject to = fn.create("camera", name, parent, &status);
   createdObj = to;
   TranslatorContextPtr ctx = context();
+  NewNodesCollector collector{ctx, prim};
   UsdTimeCode timeCode = UsdTimeCode::EarliestTime();
   bool forceDefaultRead = false;
   if(ctx)
@@ -240,7 +255,7 @@ MStatus Camera::import(const UsdPrim& prim, MObject& parent, MObject& createdObj
   }
 
   // F-Stop
-  if (!DgNodeTranslator::setFloatAttrAnim(to, m_fstop, usdCamera.GetFStopAttr()))
+  if (!DgNodeTranslator::setFloatAttrAnim(to, m_fstop, usdCamera.GetFStopAttr(), 1.0f, collector.nodeContainerPtr()))
   {
     float fstop;
     usdCamera.GetFStopAttr().Get(&fstop, timeCode);
@@ -253,7 +268,7 @@ MStatus Camera::import(const UsdPrim& prim, MObject& parent, MObject& createdObj
     // TODO: What unit here?
     MDistance one(1.0, MDistance::kCentimeters);
     double conversionFactor = one.as(MDistance::kCentimeters);
-    DgNodeTranslator::setFloatAttrAnim(to, m_focusDistance, usdCamera.GetFocusDistanceAttr(), conversionFactor);
+    DgNodeTranslator::setFloatAttrAnim(to, m_focusDistance, usdCamera.GetFocusDistanceAttr(), conversionFactor, collector.nodeContainerPtr());
   }
   else
   {
@@ -335,6 +350,8 @@ void Camera::writePrim(UsdPrim &prim, MDagPath dagPath, const ExporterParams& pa
     animTranslator->addPlug(MPlug(cameraObject, m_focalLength), usdCamera.GetFocalLengthAttr(), true);
     animTranslator->addPlug(MPlug(cameraObject, m_fstop), usdCamera.GetFStopAttr(), true);
     animTranslator->addPlug(MPlug(cameraObject, m_focusDistance), usdCamera.GetFocusDistanceAttr(), true);
+    // near-far clipping range are special: these two Maya attributes need to be mapped to one Usd attribute
+    animTranslator->addMultiPlugs({MPlug(cameraObject, m_nearDistance), MPlug(cameraObject, m_farDistance)}, usdCamera.GetClippingRangeAttr(), true);
   }
 }
 

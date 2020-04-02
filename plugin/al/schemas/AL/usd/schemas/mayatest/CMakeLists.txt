@@ -1,24 +1,22 @@
-set(CMAKE_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX}/${INSTALL_DIR_SUFFIX} )
-
 set(
     resources_install_path
-    ${CMAKE_INSTALL_PREFIX}/lib/usd/AL_USDMayaSchemasTest/resources
+    ${AL_INSTALL_PREFIX}/lib/usd/AL_USDMayaSchemasTest/resources
 )
 
 set(
     library_install_path
-    ${CMAKE_INSTALL_PREFIX}/lib
+    ${AL_INSTALL_PREFIX}/lib
 )
 
 set(
     bindings_install_path
-    ${CMAKE_INSTALL_PREFIX}/lib/python/AL/usd/schemas/mayatest
+    ${AL_INSTALL_PREFIX}/lib/python/AL/usd/schemas/mayatest
 )
 
 # Bake library name
 configure_file (
     plugInfo.json.in
-    ./plugInfo.json
+    ${CMAKE_CURRENT_BINARY_DIR}/plugInfo.json
     @ONLY
 )
 
@@ -38,12 +36,12 @@ configure_file (
 
 execute_process(
     COMMAND
-        python
-        ${USD_GENSCHEMA}
-        ${CMAKE_CURRENT_BINARY_DIR}/schema.usda
+        "${Python_EXECUTABLE}"
+        "${USD_GENSCHEMA}"
+        "${CMAKE_CURRENT_BINARY_DIR}/schema.usda"
         .
     WORKING_DIRECTORY
-        ${CMAKE_CURRENT_BINARY_DIR}
+        "${CMAKE_CURRENT_BINARY_DIR}"
     RESULT_VARIABLE
         usdgen_res
 )
@@ -64,9 +62,6 @@ add_library(AL_USDMayaSchemasTest
 
 target_compile_definitions(AL_USDMayaSchemasTest
     PRIVATE
-        MFB_PACKAGE_NAME=AL_USDMayaSchemasTest
-        MFB_ALT_PACKAGE_NAME=AL_USDMayaSchemasTest
-        MFB_PACKAGE_MODULE=AL.usd.schemas.mayatest
         AL_USDMAYASCHEMASTEST_EXPORTS
 )
 
@@ -91,36 +86,32 @@ endif()
 ####################################################################################################
 # Python bindings
 ####################################################################################################
+if(IS_WINDOWS AND MAYAUSD_DEFINE_BOOST_DEBUG_PYTHON_FLAG)
+    # On Windows when compiling with debug python the library must be named with _d.
+    set(PYTHON_LIBRARY_NAME _AL_USDMayaSchemasTest_d)
+else()
+    set(PYTHON_LIBRARY_NAME _AL_USDMayaSchemasTest)
+endif()
 
-add_library(_AL_USDMayaSchemasTest
+add_library(${PYTHON_LIBRARY_NAME}
     SHARED
     module.cpp
     wrapTokens.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/wrapExamplePolyCubeNode.cpp
 )
 
-target_compile_definitions(_AL_USDMayaSchemasTest
+target_compile_definitions(${PYTHON_LIBRARY_NAME}
     PRIVATE
         MFB_PACKAGE_NAME=AL_USDMayaSchemasTest
         MFB_ALT_PACKAGE_NAME=AL_USDMayaSchemasTest
         MFB_PACKAGE_MODULE=AL.usd.schemas.mayatest
 )
 
-set_target_properties(_AL_USDMayaSchemasTest
-    PROPERTIES 
-        PREFIX ""
-)
+set_python_module_property(${PYTHON_LIBRARY_NAME})
 
-if(MSVC)
-set_target_properties(_AL_USDMayaSchemasTest
-    PROPERTIES
-        SUFFIX ".pyd"
-)
-endif()
+target_link_libraries(${PYTHON_LIBRARY_NAME} AL_USDMayaSchemasTest ${DEPENDANT_LIBRARIES})
 
-target_link_libraries(_AL_USDMayaSchemasTest AL_USDMayaSchemasTest ${DEPENDANT_LIBRARIES})
-
-install(TARGETS _AL_USDMayaSchemasTest
+install(TARGETS ${PYTHON_LIBRARY_NAME}
     LIBRARY
     DESTINATION ${bindings_install_path}
     RUNTIME
@@ -133,7 +124,7 @@ install(TARGETS _AL_USDMayaSchemasTest
 
 # configure_file has a nice feature where it will copy the __init__ file over when it gets modified, unlike file(COPY ...)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/__init__.py ${CMAKE_BINARY_DIR}/AL/usd/schemas/mayatest/__init__.py COPYONLY)
-install(CODE "execute_process(COMMAND python -m compileall ${CMAKE_BINARY_DIR}/AL/usd/schemas/mayatest/__init__.py )")
+execute_process(COMMAND ${Python_EXECUTABLE} -m compileall ${CMAKE_BINARY_DIR}/AL/usd/schemas/mayatest/__init__.py)
 
 string(REPLACE "/" ";" folderHierarchy "AL/usd/schemas/mayatest")
 
@@ -157,6 +148,7 @@ if(${listCount} STRGREATER 1)
         ${CMAKE_BINARY_DIR}/${currentPath}/__init__.py
         "try:\n\t__import__('pkg_resources').declare_namespace(__name__)\nexcept:\n\tfrom pkgutil import extend_path\n\t__path__ = extend_path(__path__, __name__)\n"
       )
+      execute_process(COMMAND ${Python_EXECUTABLE} -m compileall ${CMAKE_BINARY_DIR}/${currentPath}/__init__.py)
     endforeach(i)
 endif()
 
@@ -164,11 +156,8 @@ install(
     DIRECTORY
         ${CMAKE_BINARY_DIR}/AL
     DESTINATION
-        ${CMAKE_INSTALL_PREFIX}/lib/python
+        ${AL_INSTALL_PREFIX}/lib/python
 )
-
-install(CODE "message(STATUS \"POST INSTALL: Compiling python/pyc for ${CMAKE_INSTALL_PREFIX}/lib/python ... \")")
-install(CODE "execute_process(COMMAND python -m compileall ${CMAKE_INSTALL_PREFIX}/lib/python )")
 
 ####################################################################################################
 # Install usd plugin resources
@@ -184,7 +173,7 @@ file(RELATIVE_PATH
 # Bake relative path
 configure_file(
     ${CMAKE_CURRENT_BINARY_DIR}/plugInfo.json
-    .
+    ${CMAKE_CURRENT_BINARY_DIR}
 )
 
 install(

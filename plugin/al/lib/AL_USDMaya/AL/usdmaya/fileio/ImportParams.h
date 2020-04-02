@@ -16,10 +16,12 @@
 #pragma once
 #include "maya/MDagPath.h"
 #include "maya/MString.h"
+#include "maya/MObjectArray.h"
 
 #include "pxr/usd/sdf/layer.h"
-#include "AL/usd/utils/ForwardDeclares.h"
 #include "AL/maya/utils/FileTranslatorOptions.h"
+
+#include <mayaUsdUtils/ForwardDeclares.h>
 
 PXR_NAMESPACE_USING_DIRECTIVE
 
@@ -48,6 +50,8 @@ struct ImporterParams
   TfTokenVector m_activePluginTranslators;
   TfTokenVector m_inactivePluginTranslators;
   
+  mutable MObjectArray m_newAnimCurves; ///< to contain the possible created new animCurves for future management.
+
   /// \brief  Given the text name of an option, returns the boolean value for that option.
   /// \param  str the name of the option
   /// \return the option value
@@ -90,9 +94,9 @@ struct ImporterParams
     return MString();
   }
 
-  /// \brief  Given the text name of an option, returns the boolean value for that option.
-  /// \param  str the name of the option
-  /// \return the option value
+  /// \brief  Sets the value of a boolean option
+  /// \param  str the name of the option to set
+  /// \param  value the new value for the option
   void setBool(const char* const str, bool value)
   {
     if(m_parser)

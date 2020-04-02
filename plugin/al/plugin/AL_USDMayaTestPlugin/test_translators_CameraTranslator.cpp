@@ -108,22 +108,32 @@ TEST(translators_CameraTranslator, animated_io)
     MObject xformB = mod.createNode("transform");
     EXPECT_EQ(MStatus(MS::kSuccess), mod.doIt());
 
-    const char* const attributeNames[] = {
+    // Note: separate keyable and non-keyable attributes to have a clear
+    //       expectation; force setting keyframe for non-keyable attributes
+    //       e.g. "nearClipPlane" and "farClipPlane" is necessary otherwise
+    //       exporting animation would not going to work properly
+    const char* const keyableAttributeNames[] = {
         "orthographic",
         "horizontalFilmAperture",
         "verticalFilmAperture",
-        "horizontalFilmOffset",
-        "verticalFilmOffset",
         "focalLength",
         "focusDistance",
-        "nearClipPlane",
-        "farClipPlane",
         "fStop",
         //"lensSqueezeRatio"
     };
-    const uint32_t numAttributes = sizeof(attributeNames) / sizeof(const char* const);
+    const uint32_t numKeyableAttributes = sizeof(keyableAttributeNames) / sizeof(const char* const);
 
-    randomAnimatedNode(node, attributeNames, numAttributes, startFrame, endFrame);
+    randomAnimatedNode(node, keyableAttributeNames, numKeyableAttributes, startFrame, endFrame);
+
+    const char* const nonKeyableAttributeNames[] = {
+        "horizontalFilmOffset",
+        "verticalFilmOffset",
+        "nearClipPlane",
+        "farClipPlane",
+    };
+    const uint32_t numNonKeyableAttributes = sizeof(nonKeyableAttributeNames) / sizeof(const char* const);
+
+    randomAnimatedNode(node, nonKeyableAttributeNames, numNonKeyableAttributes, startFrame, endFrame, true);
 
     // generate a prim for testing
     UsdStageRefPtr stage = UsdStage::CreateInMemory();
@@ -160,7 +170,8 @@ TEST(translators_CameraTranslator, animated_io)
     for(double t = eparams.m_minFrame, e = eparams.m_maxFrame + 1e-3f; t < e; t += 1.0)
     {
       MGlobal::viewFrame(t);
-      compareNodes(node, nodeB, attributeNames, numAttributes, true);
+      compareNodes(node, nodeB, keyableAttributeNames, numKeyableAttributes, true);
+      compareNodes(node, nodeB, nonKeyableAttributeNames, numNonKeyableAttributes, true);
     }
 
     EXPECT_EQ(MStatus(MS::kSuccess), mod.undoIt());
@@ -224,7 +235,7 @@ TEST(translators_CameraTranslator, cameraShapeName)
   MFnDagNode camDag(camObj);
   ASSERT_EQ(MString("AL_usdmaya_Transform"), camDag.typeName());
   ASSERT_EQ(MString("cam"), camDag.name());
-  ASSERT_EQ(1, camDag.childCount());
+  ASSERT_EQ(1u, camDag.childCount());
   MFnDagNode shapeDag(camDag.child(0));
   ASSERT_EQ(MString("camera"), shapeDag.typeName());
   ASSERT_EQ(MString("camShape"), shapeDag.name());

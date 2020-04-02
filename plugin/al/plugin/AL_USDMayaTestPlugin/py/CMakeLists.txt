@@ -1,5 +1,16 @@
-add_test(
-    NAME TestUSDMayaPython
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    COMMAND testUSDMayaPython.sh ${CMAKE_INSTALL_PREFIX}/${INSTALL_DIR_SUFFIX} ${USD_LIBRARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}
-    )
+mayaUsd_add_test(TestALUSDMayaPython_ProxyShape
+    PYTHON_MODULE testProxyShape
+)
+
+mayaUsd_add_test(TestALUSDMayaPython_Translators
+    PYTHON_MODULE testTranslators
+)
+
+mayaUsd_add_test(TestALUSDMayaPython_LayerManager
+    PYTHON_MODULE testLayerManager
+)
+
+mayaUsd_add_test(TestALUSDMayaPython_ImportModule
+    PYTHON_MODULE testUSDMayaPythonModuleOnly
+    NO_STANDALONE_INIT
+)

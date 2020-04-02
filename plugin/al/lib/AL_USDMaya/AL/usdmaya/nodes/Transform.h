@@ -17,7 +17,9 @@
 
 #include "AL/maya/utils/NodeHelper.h"
 #include "AL/maya/utils/MayaHelperMacros.h"
+
 #include "AL/usdmaya/ForwardDeclares.h"
+#include "AL/usdmaya/nodes/Scope.h"
 
 #include "maya/MObjectHandle.h"
 #include "maya/MPxTransform.h"
@@ -25,6 +27,8 @@
 namespace AL {
 namespace usdmaya {
 namespace nodes {
+
+class TransformationMatrix;
 
 //----------------------------------------------------------------------------------------------------------------------
 /// \brief  The AL::usdmaya::nodes::Transform node is a custom transform node that allows you to manipulate a USD
@@ -80,16 +84,8 @@ namespace nodes {
 /// \ingroup nodes
 //----------------------------------------------------------------------------------------------------------------------
 
-
-#if MAYA_API_VERSION >= 20190200 && MAYA_API_VERSION < 20200000
 class Transform
-  : public MPxTransform_BoundingBox,
-    public AL::maya::utils::NodeHelper
-#else
-class Transform
-  : public MPxTransform,
-    public AL::maya::utils::NodeHelper
-#endif
+  : public Scope
 {
 public:
 
@@ -104,8 +100,6 @@ public:
   //--------------------------------------------------------------------------------------------------------------------
   // Input Attributes
   //--------------------------------------------------------------------------------------------------------------------
-  AL_DECL_ATTRIBUTE(primPath);
-  AL_DECL_ATTRIBUTE(inStageData);
   AL_DECL_ATTRIBUTE(time);
   AL_DECL_ATTRIBUTE(timeOffset);
   AL_DECL_ATTRIBUTE(timeScalar);
@@ -122,24 +116,21 @@ public:
   /// \name Methods
   //--------------------------------------------------------------------------------------------------------------------
 
-  /// \brief  returns the transformation matrix for this transform node
-  /// \return the transformation matrix
-  inline TransformationMatrix* transform() const
-    { return reinterpret_cast<TransformationMatrix*>(transformationMatrixPtr()); }
-
-  /// \brief  Enable parallel evaluation
-  /// \return MPxNode::kParallel
-  MPxNode::SchedulingType schedulingType() const override
-    { return kParallel; }
-
-  inline const MObject getProxyShape() const
+  const MObject getProxyShape() const override
     { return proxyShapeHandle.object(); }
+
+
+  inline TransformationMatrix* getTransMatrix() const
+    { return reinterpret_cast<TransformationMatrix*>(transformationMatrixPtr()); }
 
 private:
 
   //--------------------------------------------------------------------------------------------------------------------
   /// virtual overrides
   //--------------------------------------------------------------------------------------------------------------------
+
+  MPxNode::SchedulingType schedulingType() const override
+    { return kParallel; }
 
   MStatus validateAndSetValue(const MPlug& plug, const MDataHandle& handle, const MDGContext& context) override;
   MPxTransformationMatrix* createTransformationMatrix() override;
@@ -169,14 +160,6 @@ private:
   /// \name Input Attributes
   //--------------------------------------------------------------------------------------------------------------------
 
-  /// \var    MPlug primPathPlug() const;
-  /// \brief  access the primPath attribute plug on this node instance.
-  ///         primPath - a Usd path of the prim being watched, e.g.  "/root/foo/pCube1"
-  /// \return the plug to the primPath attribute
-  /// \var    MPlug inStageDataPlug() const;
-  /// \brief  access the inStageData attribute plug on this node instance
-  ///         inStageData - connected from the output stage data of an AL::usdmaya::nodes::ProxyShape
-  /// \return the plug to the inStageData attribute
   /// \var    MPlug timePlug() const;
   /// \brief  access the time attribute plug on this node instance
   ///         time - (probably) connected from the output time of an AL::usdmaya::nodes::ProxyShape (but it doesn't have to be)

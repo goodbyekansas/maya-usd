@@ -286,14 +286,13 @@ MStatus TransformTranslator::copyAttributes(const UsdPrim& from, MObject to, con
             // Set the rotate order
             AL_MAYA_CHECK_ERROR2(setInt32(to, m_rotateOrder, uint32_t(convertRotationOrder(op.GetOpType()))), xformError);
           }
-
           if (attr_type == utils::UsdDataType::kVec3f)
           {
-              AL_MAYA_CHECK_ERROR2(setVec3Anim<GfVec3f>(to, obj, op, conversionFactor), xformError);
+            AL_MAYA_CHECK_ERROR2(setVec3Anim<GfVec3f>(to, obj, op, conversionFactor, &params.m_newAnimCurves), xformError);
           }
           else
           {
-            AL_MAYA_CHECK_ERROR2(setVec3Anim<GfVec3d>(to, obj, op, conversionFactor), xformError);
+            AL_MAYA_CHECK_ERROR2(setVec3Anim<GfVec3d>(to, obj, op, conversionFactor, &params.m_newAnimCurves), xformError);
           }
         }
         else if(attr_type == utils::UsdDataType::kFloat)
@@ -328,7 +327,7 @@ MStatus TransformTranslator::copyAttributes(const UsdPrim& from, MObject to, con
 
           if (!attr.isNull())
           {
-            setAngleAnim(to, attr, op);
+            setAngleAnim(to, attr, op, &params.m_newAnimCurves);
           }
         }
         else if(attr_type == utils::UsdDataType::kMatrix4d)
@@ -338,7 +337,7 @@ MStatus TransformTranslator::copyAttributes(const UsdPrim& from, MObject to, con
             std::cerr << "[TransformTranslator::copyAttributes] Error: Animated shear not currently supported" << std::endl;
           }
         }
-
+        
         continue;
 
       }
@@ -371,7 +370,6 @@ MStatus TransformTranslator::copyAttributes(const UsdPrim& from, MObject to, con
           }
           break;
           case kRotateAxis: AL_MAYA_CHECK_ERROR2(setVec3(to, m_rotateAxis, value[0] * degToRad, value[1] * degToRad, value[2] * degToRad), xformError); break;
-
           case kScalePivotTranslate: AL_MAYA_CHECK_ERROR2(setVec3(to, m_scalePivotTranslate, value[0], value[1], value[2]), xformError); break;
           case kScalePivot: AL_MAYA_CHECK_ERROR2(setVec3(to, m_scalePivot, value[0], value[1], value[2]), xformError); break;
           case kShear: AL_MAYA_CHECK_ERROR2(setVec3(to, m_shear, value[0], value[1], value[2]), xformError); break;
@@ -495,7 +493,6 @@ MStatus TransformTranslator::copyAttributes(const UsdPrim& from, MObject to, con
           AL_MAYA_CHECK_ERROR2(setVec3(to, m_shear, shearX, shearY, shearZ), xformError);
         }
       }
-
     }
   }
   else
@@ -520,7 +517,7 @@ MStatus TransformTranslator::copyAttributes(const UsdPrim& from, MObject to, con
   processMetaData(from, to, params);
   if (UsdAttribute myAttr = from.GetAttribute(UsdGeomTokens->visibility))
   {
-    DgNodeHelper::setVisAttrAnim(to, m_visibility, myAttr);
+    DgNodeHelper::setVisAttrAnim(to, m_visibility, myAttr, &params.m_newAnimCurves);
   }
 
   return MS::kSuccess;
@@ -550,12 +547,33 @@ bool animationCheck(AnimationTranslator* animTranslator, MPlug plug)
 
 //----------------------------------------------------------------------------------------------------------------------
 UsdAttribute addTranslateOp(
-    const UsdGeomXform& xformSchema,
+    const UsdGeomXformable& xformSchema,
     const char* attrName,
     const GfVec3f& currentValue,
     const UsdTimeCode& time)
 {
   UsdGeomXformOp op = xformSchema.AddTranslateOp(UsdGeomXformOp::PrecisionFloat, TfToken(attrName));
+  op.Set(currentValue, time);
+  return op.GetAttr();
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+UsdAttribute addInverseTranslateOp(
+    const UsdGeomXformable& xformSchema,
+    const char* attrName)
+{
+  UsdGeomXformOp op = xformSchema.AddTranslateOp(UsdGeomXformOp::PrecisionFloat, TfToken(attrName), true);
+  return op.GetAttr();
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+UsdAttribute addTranslateOp(
+    const UsdGeomXformable& xformSchema,
+    const char* attrName,
+    const GfVec3d& currentValue,
+    const UsdTimeCode& time)
+{
+  UsdGeomXformOp op = xformSchema.AddTranslateOp(UsdGeomXformOp::PrecisionDouble, TfToken(attrName));
   op.Set(currentValue, time);
   return op.GetAttr();
 }
@@ -612,7 +630,7 @@ MStatus TransformTranslator::copyAttributes(const MObject& from, UsdPrim& to, co
   GfVec3f rotation;
   int32_t rotateOrder;
   GfVec3f rotateAxis;
-  GfVec3f translation;
+  GfVec3d translation;
   GfVec3f scalePivot;
   GfVec3f rotatePivot;
   GfVec3f scalePivotTranslate;
@@ -624,7 +642,7 @@ MStatus TransformTranslator::copyAttributes(const MObject& from, UsdPrim& to, co
   static const GfVec3f defaultShear(0.0f);
   static const GfVec3f defaultRotation(0.0f);
   static const GfVec3f defaultRotateAxis(0.0f);
-  static const GfVec3f defaultTranslation(0.0f);
+  static const GfVec3d defaultTranslation(0.0f);
   static const GfVec3f defaultScalePivot(0.0f);
   static const GfVec3f defaultRotatePivot(0.0f);
   static const GfVec3f defaultScalePivotTranslate(0.0f);
@@ -651,7 +669,7 @@ MStatus TransformTranslator::copyAttributes(const MObject& from, UsdPrim& to, co
     getVec3(from, m_rotation, (float*)&rotation);
     getInt32(from, m_rotateOrder, rotateOrder);
     getVec3(from, m_rotateAxis, (float*)&rotateAxis);
-    getVec3(from, m_translation, (float*)&translation);
+    getVec3(from, m_translation, (double*)&translation);
     getVec3(from, m_scalePivot, (float*)&scalePivot);
     getVec3(from, m_rotatePivot, (float*)&rotatePivot);
     getVec3(from, m_scalePivotTranslate, (float*)&scalePivotTranslate);
@@ -681,7 +699,7 @@ MStatus TransformTranslator::copyAttributes(const MObject& from, UsdPrim& to, co
     plugAnimated = transformAnimated || animationCheck(animTranslator, MPlug(from, m_translation));
     if(plugAnimated || translation != defaultTranslation)
     {
-      UsdAttribute translateAttr = addTranslateOp(xformSchema, "translate", translation, params.m_timeCode);
+      UsdAttribute translateAttr = addTranslateOp(xformSchema, "", translation, params.m_timeCode);
       if(plugAnimated && animTranslator) animTranslator->forceAddPlug(MPlug(from, m_translation), translateAttr);
     }
 
@@ -703,7 +721,7 @@ MStatus TransformTranslator::copyAttributes(const MObject& from, UsdPrim& to, co
     if(plugAnimated || rotation != defaultRotation)
     {
       rotation *= radToDeg;
-      UsdAttribute rotateAttr = addRotateOp(xformSchema, "rotate", rotateOrder, rotation, params.m_timeCode);
+      UsdAttribute rotateAttr = addRotateOp(xformSchema, "", rotateOrder, rotation, params.m_timeCode);
       if(plugAnimated && animTranslator) animTranslator->forceAddPlug(MPlug(from, m_rotation), rotateAttr, radToDeg);
     }
 
@@ -718,8 +736,7 @@ MStatus TransformTranslator::copyAttributes(const MObject& from, UsdPrim& to, co
     plugAnimated = animationCheck(animTranslator, MPlug(from, m_rotatePivot));
     if(plugAnimated || rotatePivot != defaultRotatePivot)
     {
-      UsdAttribute rotatePivotINVAttr = addTranslateOp(xformSchema, "rotatePivotINV", -rotatePivot, params.m_timeCode);
-      if(plugAnimated && animTranslator) animTranslator->forceAddPlug(MPlug(from, m_rotatePivot), rotatePivotINVAttr);
+      addInverseTranslateOp(xformSchema, "rotatePivot");
     }
 
     plugAnimated = animationCheck(animTranslator, MPlug(from, m_scalePivotTranslate));
@@ -750,7 +767,7 @@ MStatus TransformTranslator::copyAttributes(const MObject& from, UsdPrim& to, co
     plugAnimated = transformAnimated || animationCheck(animTranslator, MPlug(from, m_scale));
     if(plugAnimated || scale != defaultScale)
     {
-      UsdGeomXformOp op = xformSchema.AddScaleOp(UsdGeomXformOp::PrecisionFloat, TfToken("scale"));
+      UsdGeomXformOp op = xformSchema.AddScaleOp(UsdGeomXformOp::PrecisionFloat, TfToken(""));
       op.Set(scale, params.m_timeCode);
       if(plugAnimated && animTranslator) animTranslator->forceAddPlug(MPlug(from, m_scale), op.GetAttr());
     }
@@ -758,15 +775,21 @@ MStatus TransformTranslator::copyAttributes(const MObject& from, UsdPrim& to, co
     plugAnimated = animationCheck(animTranslator, MPlug(from, m_scalePivot));
     if(plugAnimated || scalePivot != defaultScalePivot)
     {
-      UsdAttribute scalePivotINVAttr = addTranslateOp(xformSchema, "scalePivotINV", -scalePivot, params.m_timeCode);
-      if(plugAnimated && animTranslator) animTranslator->forceAddPlug(MPlug(from, m_scalePivot), scalePivotINVAttr);
+      addInverseTranslateOp(xformSchema, "scalePivot");
     }
   }
   else
   {
     MMatrix wsm = path.inclusiveMatrix();
     auto op = xformSchema.AddTransformOp(UsdGeomXformOp::PrecisionDouble, TfToken("transform"));
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
+#endif
     op.Set(*(const GfMatrix4d*)&wsm, params.m_timeCode);
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
     if(animTranslator) animTranslator->addWorldSpace(path, op.GetAttr());
   }
 

@@ -1,5 +1,3 @@
-add_test(
-    NAME TestAdditionalTranslators
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    COMMAND testTranslators.sh ${CMAKE_INSTALL_PREFIX} ${USD_LIBRARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}
-    )
+mayaUsd_add_test(TestAdditionalTranslators
+    PYTHON_MODULE testTranslators
+)
