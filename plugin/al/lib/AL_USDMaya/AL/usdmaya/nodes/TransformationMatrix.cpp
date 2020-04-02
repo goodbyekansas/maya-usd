@@ -90,8 +90,7 @@ TransformationMatrix::TransformationMatrix()
 
 //----------------------------------------------------------------------------------------------------------------------
 TransformationMatrix::TransformationMatrix(const UsdPrim& prim)
-  : MPxTransformationMatrix(),
-    m_prim(prim),
+  : BasicTransformationMatrix(prim),
     m_xform(prim),
     m_time(UsdTimeCode::Default()),
     m_scaleTweak(0, 0, 0),
@@ -971,7 +970,7 @@ void TransformationMatrix::initialiseToPrim(bool readFromPrim, Scope* transformN
       case kTranslate:
         {
           m_flags |= kPrimHasTranslation;
-          if(op.GetNumTimeSamples() > 0)
+          if(op.GetNumTimeSamples() > 1)
           {
             m_flags |= kAnimatedTranslation;
           }
@@ -1043,9 +1042,10 @@ void TransformationMatrix::initialiseToPrim(bool readFromPrim, Scope* transformN
         }
         break;
 
+      case kRotate:
         {
           m_flags |= kPrimHasRotation;
-          if(op.GetNumTimeSamples() > 0)
+          if(op.GetNumTimeSamples() > 1)
           {
             m_flags |= kAnimatedRotation;
           }
@@ -1121,7 +1121,7 @@ void TransformationMatrix::initialiseToPrim(bool readFromPrim, Scope* transformN
       case kShear:
         {
           m_flags |= kPrimHasShear;
-          if(op.GetNumTimeSamples() > 0)
+          if(op.GetNumTimeSamples() > 1)
           {
             m_flags |= kAnimatedShear;
           }
@@ -1144,7 +1144,7 @@ void TransformationMatrix::initialiseToPrim(bool readFromPrim, Scope* transformN
       case kScale:
         {
           m_flags |= kPrimHasScale;
-          if(op.GetNumTimeSamples() > 0)
+          if(op.GetNumTimeSamples() > 1)
           {
             m_flags |= kAnimatedScale;
           }
@@ -1179,7 +1179,7 @@ void TransformationMatrix::initialiseToPrim(bool readFromPrim, Scope* transformN
           m_flags |= kPrimHasTransform;
           m_flags |= kFromMatrix;
           m_flags |= kPushPrimToMatrix;
-          if(op.GetNumTimeSamples() > 0)
+          if(op.GetNumTimeSamples() > 1)
           {
             m_flags |= kAnimatedMatrix;
           }
