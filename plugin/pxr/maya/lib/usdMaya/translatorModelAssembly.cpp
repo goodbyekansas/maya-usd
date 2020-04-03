@@ -141,7 +141,9 @@ _AddReference(
         else {
             refs.AddReference(SdfReference(refAssetPath));
         }
+        return true;
     }
+    return false;
 }
 
 /* static */

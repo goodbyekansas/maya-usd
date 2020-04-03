@@ -169,11 +169,11 @@ struct UsdMayaJobExportArgs
     /// This is the path of the USD prim under which *all* prims will be
     /// authored.
     const SdfPath parentScope;
+    const std::string overrideLayer;
     const TfToken renderLayerMode;
     const TfToken rootKind;
     const TfToken shadingMode;
     const bool verbose;
-    const std::string overrideLayer;
 
     typedef std::map<std::string, std::string> ChaserArgs;
     const std::vector<std::string> chaserNames;
