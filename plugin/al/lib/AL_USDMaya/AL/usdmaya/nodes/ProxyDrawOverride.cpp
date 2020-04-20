@@ -1000,11 +1000,6 @@ bool ProxyDrawOverride::userSelect(
       break;
       }
 
-      MString final_command = "AL_usdmaya_ProxyShapePostSelect \"";
-      final_command += fullSelPath;
-      final_command += "\"";
-      proxyShape->setChangedSelectionState(true);
-      MGlobal::executeCommandOnIdle(final_command, false);
 #if defined(WANT_UFE_BUILD)
     } // else MAYA_WANT_UFE_SELECTION
 #endif
