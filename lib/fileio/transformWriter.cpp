@@ -420,7 +420,9 @@ UsdMayaTransformWriter::_PushTransformStack(
                     usdXformable.GetOrderedXformOps(&resetsXformStack);
             for (auto op_iter = ops.begin(); op_iter != ops.end(); ++op_iter) {
                 const UsdGeomXformOp& thisOp = *op_iter;
-                if (thisOp.GetOpType() == animChan.usdOpType) {
+                if (thisOp.GetName() == animChan.opName 
+                    && thisOp.GetOpType() == animChan.usdOpType
+                    && thisOp.IsInverseOp() == animChan.isInverse) {
                         animChan.op = thisOp;
                         foundOp = true;
                         break;
