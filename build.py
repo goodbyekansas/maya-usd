@@ -261,7 +261,7 @@ def RunCMake(context, extraArgs=None, stages=None):
                 '{generator} '
                 '{extraArgs} '
                 '"{srcDir}"'
-                .format(cmake=os.environ.get("CMAKE","cmake"),
+                .format(cmake=os.environ.get("CMAKE","cmake3"),
 			instDir=instDir,
                         variant=variant,
                         srcDir=srcDir,
