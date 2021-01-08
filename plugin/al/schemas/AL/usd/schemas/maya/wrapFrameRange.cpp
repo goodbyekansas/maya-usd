@@ -13,16 +13,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-#include "./FrameRange.h"
-#include "pxr/usd/usd/schemaBase.h"
+#include "FrameRange.h"
 
-#include "pxr/usd/sdf/primSpec.h"
-
-#include "pxr/usd/usd/pyConversions.h"
-#include "pxr/base/tf/pyContainerConversions.h"
-#include "pxr/base/tf/pyResultConversions.h"
-#include "pxr/base/tf/pyUtils.h"
-#include "pxr/base/tf/wrapTypeHelpers.h"
+#include <pxr/base/tf/pyContainerConversions.h>
+#include <pxr/base/tf/pyResultConversions.h>
+#include <pxr/base/tf/pyUtils.h>
+#include <pxr/base/tf/wrapTypeHelpers.h>
+#include <pxr/usd/sdf/primSpec.h>
+#include <pxr/usd/usd/pyConversions.h>
+#include <pxr/usd/usd/schemaBase.h>
 
 #include <boost/python.hpp>
 
@@ -34,44 +33,42 @@ PXR_NAMESPACE_USING_DIRECTIVE
 
 namespace {
 
-#define WRAP_CUSTOM                                                     \
-    template <class Cls> static void _CustomWrapCode(Cls &_class)
+#define WRAP_CUSTOM template <class Cls> static void _CustomWrapCode(Cls& _class)
 
 // fwd decl.
 WRAP_CUSTOM;
 
-        
 static UsdAttribute
-_CreateAnimationStartFrameAttr(AL_usd_FrameRange &self,
-                                      object defaultVal, bool writeSparsely) {
+_CreateAnimationStartFrameAttr(AL_usd_FrameRange& self, object defaultVal, bool writeSparsely)
+{
     return self.CreateAnimationStartFrameAttr(
         UsdPythonToSdfType(defaultVal, SdfValueTypeNames->Double), writeSparsely);
 }
-        
+
 static UsdAttribute
-_CreateStartFrameAttr(AL_usd_FrameRange &self,
-                                      object defaultVal, bool writeSparsely) {
+_CreateStartFrameAttr(AL_usd_FrameRange& self, object defaultVal, bool writeSparsely)
+{
     return self.CreateStartFrameAttr(
         UsdPythonToSdfType(defaultVal, SdfValueTypeNames->Double), writeSparsely);
 }
-        
+
 static UsdAttribute
-_CreateEndFrameAttr(AL_usd_FrameRange &self,
-                                      object defaultVal, bool writeSparsely) {
+_CreateEndFrameAttr(AL_usd_FrameRange& self, object defaultVal, bool writeSparsely)
+{
     return self.CreateEndFrameAttr(
         UsdPythonToSdfType(defaultVal, SdfValueTypeNames->Double), writeSparsely);
 }
-        
+
 static UsdAttribute
-_CreateAnimationEndFrameAttr(AL_usd_FrameRange &self,
-                                      object defaultVal, bool writeSparsely) {
+_CreateAnimationEndFrameAttr(AL_usd_FrameRange& self, object defaultVal, bool writeSparsely)
+{
     return self.CreateAnimationEndFrameAttr(
         UsdPythonToSdfType(defaultVal, SdfValueTypeNames->Double), writeSparsely);
 }
-        
+
 static UsdAttribute
-_CreateCurrentFrameAttr(AL_usd_FrameRange &self,
-                                      object defaultVal, bool writeSparsely) {
+_CreateCurrentFrameAttr(AL_usd_FrameRange& self, object defaultVal, bool writeSparsely)
+{
     return self.CreateCurrentFrameAttr(
         UsdPythonToSdfType(defaultVal, SdfValueTypeNames->Double), writeSparsely);
 }
@@ -82,11 +79,9 @@ void wrapAL_usd_FrameRange()
 {
     typedef AL_usd_FrameRange This;
 
-    class_<This, bases<UsdTyped> >
-        cls("FrameRange");
+    class_<This, bases<UsdTyped>> cls("FrameRange");
 
-    cls
-        .def(init<UsdPrim>(arg("prim")))
+    cls.def(init<UsdPrim>(arg("prim")))
         .def(init<UsdSchemaBase const&>(arg("schemaObj")))
         .def(TfTypePythonClass())
 
@@ -96,61 +91,58 @@ void wrapAL_usd_FrameRange()
         .def("Define", &This::Define, (arg("stage"), arg("path")))
         .staticmethod("Define")
 
-        .def("GetSchemaAttributeNames",
-             &This::GetSchemaAttributeNames,
-             arg("includeInherited")=true,
-             return_value_policy<TfPySequenceToList>())
+        .def(
+            "GetSchemaAttributeNames",
+            &This::GetSchemaAttributeNames,
+            arg("includeInherited") = true,
+            return_value_policy<TfPySequenceToList>())
         .staticmethod("GetSchemaAttributeNames")
 
-        .def("_GetStaticTfType", (TfType const &(*)()) TfType::Find<This>,
-             return_value_policy<return_by_value>())
+        .def(
+            "_GetStaticTfType",
+            (TfType const& (*)())TfType::Find<This>,
+            return_value_policy<return_by_value>())
         .staticmethod("_GetStaticTfType")
 
         .def(!self)
 
-        
-        .def("GetAnimationStartFrameAttr",
-             &This::GetAnimationStartFrameAttr)
-        .def("CreateAnimationStartFrameAttr",
-             &_CreateAnimationStartFrameAttr,
-             (arg("defaultValue")=object(),
-              arg("writeSparsely")=false))
-        
-        .def("GetStartFrameAttr",
-             &This::GetStartFrameAttr)
-        .def("CreateStartFrameAttr",
-             &_CreateStartFrameAttr,
-             (arg("defaultValue")=object(),
-              arg("writeSparsely")=false))
-        
-        .def("GetEndFrameAttr",
-             &This::GetEndFrameAttr)
-        .def("CreateEndFrameAttr",
-             &_CreateEndFrameAttr,
-             (arg("defaultValue")=object(),
-              arg("writeSparsely")=false))
-        
-        .def("GetAnimationEndFrameAttr",
-             &This::GetAnimationEndFrameAttr)
-        .def("CreateAnimationEndFrameAttr",
-             &_CreateAnimationEndFrameAttr,
-             (arg("defaultValue")=object(),
-              arg("writeSparsely")=false))
-        
-        .def("GetCurrentFrameAttr",
-             &This::GetCurrentFrameAttr)
-        .def("CreateCurrentFrameAttr",
-             &_CreateCurrentFrameAttr,
-             (arg("defaultValue")=object(),
-              arg("writeSparsely")=false))
+        .def("GetAnimationStartFrameAttr", &This::GetAnimationStartFrameAttr)
+        .def(
+            "CreateAnimationStartFrameAttr",
+            &_CreateAnimationStartFrameAttr,
+            (arg("defaultValue") = object(), arg("writeSparsely") = false))
 
-    ;
+        .def("GetStartFrameAttr", &This::GetStartFrameAttr)
+        .def(
+            "CreateStartFrameAttr",
+            &_CreateStartFrameAttr,
+            (arg("defaultValue") = object(), arg("writeSparsely") = false))
+
+        .def("GetEndFrameAttr", &This::GetEndFrameAttr)
+        .def(
+            "CreateEndFrameAttr",
+            &_CreateEndFrameAttr,
+            (arg("defaultValue") = object(), arg("writeSparsely") = false))
+
+        .def("GetAnimationEndFrameAttr", &This::GetAnimationEndFrameAttr)
+        .def(
+            "CreateAnimationEndFrameAttr",
+            &_CreateAnimationEndFrameAttr,
+            (arg("defaultValue") = object(), arg("writeSparsely") = false))
+
+        .def("GetCurrentFrameAttr", &This::GetCurrentFrameAttr)
+        .def(
+            "CreateCurrentFrameAttr",
+            &_CreateCurrentFrameAttr,
+            (arg("defaultValue") = object(), arg("writeSparsely") = false))
+
+        ;
 
     _CustomWrapCode(cls);
 }
 
 // ===================================================================== //
-// Feel free to add custom code below this line, it will be preserved by 
+// Feel free to add custom code below this line, it will be preserved by
 // the code generator.  The entry point for your custom code should look
 // minimally like the following:
 //
@@ -161,7 +153,7 @@ void wrapAL_usd_FrameRange()
 // }
 //
 // Of course any other ancillary or support code may be provided.
-// 
+//
 // Just remember to wrap code in the appropriate delimiters:
 // 'namespace {', '}'.
 //
@@ -170,7 +162,6 @@ void wrapAL_usd_FrameRange()
 
 namespace {
 
-WRAP_CUSTOM {
-}
+WRAP_CUSTOM { }
 
-}
+} // namespace

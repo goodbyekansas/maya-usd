@@ -23,13 +23,19 @@ from maya import cmds
 from maya import standalone
 from maya import OpenMaya as OM
 
+import sys
 import unittest
-
 
 class testUsdMayaDiagnosticDelegate(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         standalone.initialize('usd')
+
+        # Deprecated since version 3.2: assertRegexpMatches and assertRaisesRegexp
+        # have been renamed to assertRegex() and assertRaisesRegex()
+        if sys.version_info.major < 3 or sys.version_info.minor < 2:
+            cls.assertRegex = cls.assertRegexpMatches
+            cls.assertRaisesRegex = cls.assertRaisesRegexp
 
     @classmethod
     def tearDownClass(cls):
@@ -39,6 +45,9 @@ class testUsdMayaDiagnosticDelegate(unittest.TestCase):
         self.messageLog = []
         self.callback = None
         cmds.loadPlugin('pxrUsd', quiet=True)
+        # assertCountEqual in python 3 is equivalent to assertItemsEqual
+        if sys.version_info[0] >= 3:
+            self.assertItemsEqual = self.assertCountEqual
 
     def _OnCommandOutput(self, message, messageType, _):
         if (messageType == OM.MCommandMessage.kInfo
@@ -93,7 +102,7 @@ class testUsdMayaDiagnosticDelegate(unittest.TestCase):
         log = self._StopRecording()
         self.assertEqual(len(log), 1)
         logText, logCode = log[0]
-        self.assertRegexpMatches(logText,
+        self.assertRegex(logText,
                 "^Python coding error: blah -- Coding Error in "
                 "__main__\.testError at line [0-9]+ of ")
         self.assertEqual(logCode, OM.MCommandMessage.kError)
@@ -112,10 +121,10 @@ class testUsdMayaDiagnosticDelegate(unittest.TestCase):
             Tf.Warn("spooky warning")
             Tf.Status("informative status")
 
-            for i in xrange(5):
+            for i in range(5):
                 Tf.Status("repeated status %d" % i)
 
-            for i in xrange(3):
+            for i in range(3):
                 Tf.Warn("spam warning %d" % i)
 
             try:
@@ -144,7 +153,7 @@ class testUsdMayaDiagnosticDelegate(unittest.TestCase):
 
             cmds.unloadPlugin('pxrUsd', force=True)
 
-            for i in xrange(5):
+            for i in range(5):
                 Tf.Status("no delegate, this will be lost %d" % i)
         log = self._StopRecording()
 

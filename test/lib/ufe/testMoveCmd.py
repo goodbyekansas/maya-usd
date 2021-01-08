@@ -19,8 +19,8 @@
 import maya.api.OpenMaya as om
 import maya.cmds as cmds
 
-from ufeTestUtils import usdUtils, mayaUtils, ufeUtils
-from ufeTestUtils.testUtils import assertVectorAlmostEqual
+import usdUtils, mayaUtils, ufeUtils
+from testUtils import assertVectorAlmostEqual
 import testTRSBase
 import ufe
 
@@ -85,7 +85,7 @@ class MoveCmdTestCase(testTRSBase.TRSTestCaseBase):
         self.runTimeTranslation = None
         self.ufeTranslation = None
 
-        # Open top_layer.ma scene in test-samples
+        # Open top_layer.ma scene in testSamples
         mayaUtils.openTopLayerScene()
         
         # Create some extra Maya nodes
@@ -180,7 +180,7 @@ class MoveCmdTestCase(testTRSBase.TRSTestCaseBase):
 
         # Select Ball_35 to move it.
         ball35Path = ufe.Path([
-            mayaUtils.createUfePathSegment("|world|transform1|proxyShape1"), 
+            mayaUtils.createUfePathSegment("|transform1|proxyShape1"), 
             usdUtils.createUfePathSegment("/Room_set/Props/Ball_35")])
         ball35Item = ufe.Hierarchy.createItem(ball35Path)
 
@@ -210,13 +210,12 @@ class MoveCmdTestCase(testTRSBase.TRSTestCaseBase):
 
         self.runTestMove(expected)
 
-    # Not running because of expired prim problems.  PPT, 21-Dec-2018.
-    def _testMultiSelectMoveUSD(self):
+    def testMultiSelectMoveUSD(self):
         '''Move multiple USD objects, read through Transform3d interface.'''
 
         # Select multiple balls to move them.
         proxyShapePathSegment = mayaUtils.createUfePathSegment(
-            "|world|transform1|proxyShape1")
+            "|transform1|proxyShape1")
 
         balls = ['Ball_33', 'Ball_34']
         ballPaths = [
@@ -264,5 +263,4 @@ class MoveCmdTestCase(testTRSBase.TRSTestCaseBase):
         # Save the initial positions to the memento list.
         expected = [usdSceneItemTranslation(ballItem) for ballItem in ballItems]
 
-        #Temporarily disabling undo redo until we fix it for PR 94
         self.runMultiSelectTestMove(ballItems, expected)

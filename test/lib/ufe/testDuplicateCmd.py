@@ -18,12 +18,13 @@
 
 import maya.cmds as cmds
 
-from pxr import Sdf
-
-from ufeTestUtils import usdUtils, mayaUtils
+import usdUtils
+import mayaUtils
 import ufe
+import ufeUtils
 
 import unittest
+
 
 class DuplicateCmdTestCase(unittest.TestCase):
     '''Verify the Maya delete command, for multiple runtimes.
@@ -42,20 +43,20 @@ class DuplicateCmdTestCase(unittest.TestCase):
     '''
 
     pluginsLoaded = False
-    
+
     @classmethod
     def setUpClass(cls):
         if not cls.pluginsLoaded:
             cls.pluginsLoaded = mayaUtils.isMayaUsdPluginLoaded()
-    
+
     def setUp(self):
         ''' Called initially to set up the Maya test environment '''
         # Load plugins
         self.assertTrue(self.pluginsLoaded)
-        
-        # Open top_layer.ma scene in test-samples
+
+        # Open top_layer.ma scene in testSamples
         mayaUtils.openTopLayerScene()
-        
+
         # Create some extra Maya nodes
         cmds.polySphere()
 
@@ -70,11 +71,11 @@ class DuplicateCmdTestCase(unittest.TestCase):
         sphereItem = ufe.Hierarchy.createItem(spherePath)
         sphereHierarchy = ufe.Hierarchy.hierarchy(sphereItem)
         worldItem = sphereHierarchy.parent()
-        
+
         ball35Path = ufe.Path([
             mayaUtils.createUfePathSegment(
-                "|world|transform1|proxyShape1"),
-             usdUtils.createUfePathSegment("/Room_set/Props/Ball_35")])
+                "|transform1|proxyShape1"),
+            usdUtils.createUfePathSegment("/Room_set/Props/Ball_35")])
         ball35Item = ufe.Hierarchy.createItem(ball35Path)
         ball35Hierarchy = ufe.Hierarchy.hierarchy(ball35Item)
         propsItem = ball35Hierarchy.parent()
@@ -109,11 +110,7 @@ class DuplicateCmdTestCase(unittest.TestCase):
         ball35DupItem = next(snIter)
         ball35DupName = str(ball35DupItem.path().back())
 
-        # MAYA-92350: should not need to re-bind hierarchy interface objects
-        # with their item.
-        worldHierarchy = ufe.Hierarchy.hierarchy(worldItem)
         worldChildren = worldHierarchy.children()
-        propsHierarchy = ufe.Hierarchy.hierarchy(propsItem)
         propsChildren = propsHierarchy.children()
 
         self.assertEqual(len(worldChildren)-len(worldChildrenPre), 1)
@@ -141,19 +138,14 @@ class DuplicateCmdTestCase(unittest.TestCase):
         self.assertNotIn(sphereDupName, worldChildrenNames)
         self.assertNotIn(ball35DupName, propsChildrenNames)
 
-        # MAYA-92264: because of USD bug, redo doesn't work.
-        return
+        # The duplicated items shoudl reappear after a redo
         cmds.redo()
 
         snIter = iter(ufe.GlobalSelection.get())
         sphereDupItem = next(snIter)
         ball35DupItem = next(snIter)
 
-        # MAYA-92350: should not need to re-bind hierarchy interface objects
-        # with their item.
-        worldHierarchy = ufe.Hierarchy.hierarchy(worldItem)
         worldChildren = worldHierarchy.children()
-        propsHierarchy = ufe.Hierarchy.hierarchy(propsItem)
         propsChildren = propsHierarchy.children()
 
         self.assertEqual(len(worldChildren)-len(worldChildrenPre), 1)
@@ -161,3 +153,57 @@ class DuplicateCmdTestCase(unittest.TestCase):
 
         self.assertIn(sphereDupItem, worldChildren)
         self.assertIn(ball35DupItem, propsChildren)
+
+        cmds.undo()
+
+        # The duplicated items should not be assigned to the name of a
+        # deactivated USD item.
+
+        cmds.select(clear=True)
+
+        # Delete the even numbered props:
+        evenPropsChildrenPre = propsChildrenPre[0:35:2]
+        for propChild in evenPropsChildrenPre:
+            ufe.GlobalSelection.get().append(propChild)
+        cmds.delete()
+
+        worldHierarchy = ufe.Hierarchy.hierarchy(worldItem)
+        worldChildren = worldHierarchy.children()
+        propsHierarchy = ufe.Hierarchy.hierarchy(propsItem)
+        propsChildren = propsHierarchy.children()
+        propsChildrenPostDel = propsHierarchy.children()
+
+        # Duplicate Ball_1
+        ufe.GlobalSelection.get().append(propsChildrenPostDel[0])
+
+        cmds.duplicate()
+
+        snIter = iter(ufe.GlobalSelection.get())
+        ballDupItem = next(snIter)
+        ballDupName = str(ballDupItem.path().back())
+
+        self.assertNotIn(ballDupItem, propsChildrenPostDel)
+        self.assertNotIn(ballDupName, propsChildrenNames)
+        self.assertEqual(ballDupName, "Ball_36")
+
+        cmds.undo()  # undo duplication
+        cmds.undo()  # undo deletion
+
+    @unittest.skipUnless(mayaUtils.previewReleaseVersion() >= 121, 'Requires Maya fixes only available in Maya Preview Release 121 or later.')
+    def testSmartTransformDuplicate(self):
+        '''Test smart transform option of duplicate command.'''
+        torusFile = mayaUtils.getTestScene("groupCmd", "torus.usda")
+        torusDagPath, torusStage = mayaUtils.createProxyFromFile(torusFile)
+        usdTorusPathString = torusDagPath + ",/pTorus1"
+
+        cmds.duplicate(usdTorusPathString)
+        cmds.move(10, 0, 0, r=True)
+        smartDup = cmds.duplicate(smartTransform=True)
+
+        usdTorusItem = ufeUtils.createUfeSceneItem(torusDagPath, '/pTorus3')
+        torusT3d = ufe.Transform3d.transform3d(usdTorusItem)
+        transVector = torusT3d.inclusiveMatrix().matrix[-1]
+
+        correctResult = [20, 0, 0, 1]
+
+        self.assertEqual(correctResult, transVector)

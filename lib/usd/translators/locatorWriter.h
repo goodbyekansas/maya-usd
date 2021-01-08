@@ -16,20 +16,17 @@
 #ifndef PXRUSDTRANSLATORS_LOCATOR_WRITER_H
 #define PXRUSDTRANSLATORS_LOCATOR_WRITER_H
 
-/// \file pxrUsdTranslators/locatorWriter.h
+/// \file
 
-#include "pxr/pxr.h"
+#include <mayaUsd/fileio/primWriter.h>
+#include <mayaUsd/fileio/writeJobContext.h>
 
-#include "../../fileio/primWriter.h"
-#include "../../fileio/writeJobContext.h"
-
-#include "pxr/usd/sdf/path.h"
+#include <pxr/pxr.h>
+#include <pxr/usd/sdf/path.h>
 
 #include <maya/MFnDependencyNode.h>
 
-
 PXR_NAMESPACE_OPEN_SCOPE
-
 
 /// A simple USD prim writer for Maya locator shape nodes.
 ///
@@ -46,13 +43,11 @@ class PxrUsdTranslators_LocatorWriter : public UsdMayaPrimWriter
 {
 public:
     PxrUsdTranslators_LocatorWriter(
-            const MFnDependencyNode& depNodeFn,
-            const SdfPath& usdPath,
-            UsdMayaWriteJobContext& jobCtx);
+        const MFnDependencyNode& depNodeFn,
+        const SdfPath&           usdPath,
+        UsdMayaWriteJobContext&  jobCtx);
 };
 
-
 PXR_NAMESPACE_CLOSE_SCOPE
-
 
 #endif

@@ -15,36 +15,29 @@
 //
 #pragma once
 
-#include "../Api.h"
+#include <AL/maya/utils/MayaHelperMacros.h>
+#include <AL/usdmaya/Api.h>
 
-#include "AL/maya/utils/MayaHelperMacros.h"
-#include "maya/MPxCommand.h"
-
-#if MAYA_API_VERSION < 201800
-#include "maya/MArgDatabase.h"
-#endif
+#include <maya/MPxCommand.h>
 
 namespace AL {
 namespace usdmaya {
 namespace cmds {
 
 //----------------------------------------------------------------------------------------------------------------------
-/// \brief  A command that allows you to query all of the translator plugins that are currently registered with AL_usdmaya
-/// \ingroup commands
+/// \brief  A command that allows you to query all of the translator plugins that are currently
+/// registered with AL_usdmaya \ingroup commands
 //----------------------------------------------------------------------------------------------------------------------
-class ListTranslators
-  : public MPxCommand
+class ListTranslators : public MPxCommand
 {
 public:
-  AL_MAYA_DECLARE_COMMAND();
+    AL_MAYA_DECLARE_COMMAND();
+
 private:
-  bool isUndoable() const override;
-  MStatus doIt(const MArgList& args) override;
+    bool    isUndoable() const override;
+    MStatus doIt(const MArgList& args) override;
 };
 
-} // cmds
-} // usdmaya
-} // AL
-
-
-
+} // namespace cmds
+} // namespace usdmaya
+} // namespace AL

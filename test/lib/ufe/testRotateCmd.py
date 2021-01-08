@@ -20,8 +20,8 @@ import maya.api.OpenMaya as om
 import maya.cmds as cmds
 from math import radians
 
-from ufeTestUtils import usdUtils, mayaUtils, ufeUtils
-from ufeTestUtils.testUtils import assertVectorAlmostEqual
+import usdUtils, mayaUtils, ufeUtils
+from testUtils import assertVectorAlmostEqual
 import testTRSBase
 import ufe
 
@@ -85,7 +85,7 @@ class RotateCmdTestCase(testTRSBase.TRSTestCaseBase):
         self.runTimeRotation = None
         self.ufeRotation = None
 
-        # Open top_layer.ma scene in test-samples
+        # Open top_layer.ma scene in testSamples
         mayaUtils.openTopLayerScene()
         
         # Create some extra Maya nodes
@@ -176,17 +176,12 @@ class RotateCmdTestCase(testTRSBase.TRSTestCaseBase):
 
         self.runTestRotate(rotation)
 
-
-    # Note: marked as expected failure as sometimes it passes and sometimes it fails
-    #       with something like:
-    #       AssertionError: -0.5235987755982988 != -0.4220828456501826 within 7 places
-    @unittest.expectedFailure
     def testRotateUSD(self):
         '''Rotate USD object, read through the Transform3d interface.'''
 
         # Select Ball_35 to rotate it.
         ball35Path = ufe.Path([
-            mayaUtils.createUfePathSegment("|world|transform1|proxyShape1"), 
+            mayaUtils.createUfePathSegment("|transform1|proxyShape1"), 
             usdUtils.createUfePathSegment("/Room_set/Props/Ball_35")])
         ball35Item = ufe.Hierarchy.createItem(ball35Path)
 
@@ -216,20 +211,14 @@ class RotateCmdTestCase(testTRSBase.TRSTestCaseBase):
         # Save the initial position to the memento list.
         expected = ball35Rotation()
 
-        # MAYA-96058: unfortunately, rotate command currently requires a rotate
-        # manipulator to be created to update the UFE object.
-        manipCtx = cmds.manipRotateContext()
-        cmds.setToolTo(manipCtx)
-
-        #Temporarily disabling undo redo until we fix it for PR 94
         self.runTestRotate(expected)
 
-    def _testMultiSelectRotateUSD(self):
+    def testMultiSelectRotateUSD(self):
         '''Rotate multiple USD objects, read through Transform3d interface.'''
 
         # Select multiple balls to rotate them.
         proxyShapePathSegment = mayaUtils.createUfePathSegment(
-            "|world|transform1|proxyShape1")
+            "|transform1|proxyShape1")
 
         balls = ['Ball_33', 'Ball_34']
         ballPaths = [
@@ -276,11 +265,5 @@ class RotateCmdTestCase(testTRSBase.TRSTestCaseBase):
         # Save the initial positions to the memento list.
         expected = [usdSceneItemRotation(ballItem) for ballItem in ballItems]
 
-        # MAYA-96058: unfortunately, rotate command currently requires a rotate
-        # manipulator to be created to update the UFE object.
-        manipCtx = cmds.manipRotateContext()
-        cmds.setToolTo(manipCtx)
-
-        #Temporarily disabling undo redo until we fix it for PR 94
         self.runMultiSelectTestRotate(ballItems, expected)
         

@@ -17,6 +17,13 @@
 #pragma once
 #include "AL/usdmaya/fileio/translators/TranslatorBase.h"
 
+PXR_NAMESPACE_OPEN_SCOPE
+
+// forward declare usd types
+class UsdGeomNurbsCurves;
+
+PXR_NAMESPACE_CLOSE_SCOPE
+
 namespace AL {
 namespace usdmaya {
 namespace fileio {
@@ -28,30 +35,35 @@ namespace translators {
 class NurbsCurve : public TranslatorBase
 {
 public:
-  AL_USDMAYA_DECLARE_TRANSLATOR(NurbsCurve);
-private:
-  MStatus initialize() override;
-  MStatus import(const UsdPrim& prim, MObject& parent, MObject& createdObj) override;
-  UsdPrim exportObject(UsdStageRefPtr stage, MDagPath dagPath, const SdfPath& usdPath,
-                       const ExporterParams& params) override;
-  MStatus tearDown(const SdfPath& path) override;
-  MStatus update(const UsdPrim& prim) override;
-  MStatus preTearDown(UsdPrim& prim) override;
-
-  bool supportsUpdate() const override
-  { return false; }
-  bool importableByDefault() const override
-  { return false; }
-
-  ExportFlag canExport(const MObject& obj) override
-    { return obj.hasFn(MFn::kNurbsCurve) ? ExportFlag::kFallbackSupport : ExportFlag::kNotSupported; }
-  bool canBeOverridden() override
-    { return true; }
+    AL_USDMAYA_DECLARE_TRANSLATOR(NurbsCurve);
 
 private:
-  void writeEdits(UsdGeomNurbsCurves& nurbsCurvesPrim, MFnNurbsCurve& fnCurve, bool writeAll);
+    MStatus initialize() override;
+    MStatus import(const UsdPrim& prim, MObject& parent, MObject& createdObj) override;
+    UsdPrim exportObject(
+        UsdStageRefPtr        stage,
+        MDagPath              dagPath,
+        const SdfPath&        usdPath,
+        const ExporterParams& params) override;
+    MStatus tearDown(const SdfPath& path) override;
+    MStatus update(const UsdPrim& prim) override;
+    MStatus preTearDown(UsdPrim& prim) override;
 
-  static MObject m_visible;
+    bool supportsUpdate() const override { return false; }
+    bool importableByDefault() const override { return false; }
+
+    ExportFlag canExport(const MObject& obj) override
+    {
+        return obj.hasFn(MFn::kNurbsCurve) ? ExportFlag::kFallbackSupport
+                                           : ExportFlag::kNotSupported;
+    }
+    bool canBeOverridden() override { return true; }
+
+private:
+    void
+    writeEdits(PXR_NS::UsdGeomNurbsCurves& nurbsCurvesPrim, MFnNurbsCurve& fnCurve, bool writeAll);
+
+    static MObject m_visible;
 };
 
 //----------------------------------------------------------------------------------------------------------------------

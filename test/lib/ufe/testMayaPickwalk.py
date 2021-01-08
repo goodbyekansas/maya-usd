@@ -21,7 +21,7 @@ import unittest
 import maya.cmds as cmds
 import sys, os
 
-from ufeTestUtils import usdUtils, mayaUtils, ufeUtils
+import usdUtils, mayaUtils, ufeUtils
 import ufe
 
 class MayaUFEPickWalkTesting(unittest.TestCase):
@@ -70,7 +70,7 @@ class MayaUFEPickWalkTesting(unittest.TestCase):
         # Set up memento - [[mayaSelection, ufeSelection], ...]
         self.memento = []
         
-        # Open top_layer.ma scene in test-samples
+        # Open top_layer.ma scene in testSamples
         mayaUtils.openTopLayerScene()
         
         # Create some extra Maya nodes
@@ -168,8 +168,12 @@ class MayaUFEPickWalkTesting(unittest.TestCase):
         
         # Pickwalk on unsupported UFE items
         cmds.select("pCube1.e[6]")
-        self.snapShotAndTest((["pCube1.e[6]"], ["pCubeShape1"]))
-        self.assertTrue(next(iter(ufe.GlobalSelection.get())).isProperty())
+        if int(cmds.about(majorVersion=True)) <= 2020:
+            self.snapShotAndTest((["pCube1.e[6]"], ["pCubeShape1"]))
+            self.assertTrue(next(iter(ufe.GlobalSelection.get())).isProperty())
+        else:
+            self.snapShotAndTest((["pCube1.e[6]"], []))
+            self.assertTrue(ufe.GlobalSelection.get().empty())
         
         # TODO: HS 2019 : test fails.  MAYA-101373
 #        cmds.pickWalk(type="edgeloop", d="right")
@@ -181,14 +185,14 @@ class MayaUFEPickWalkTesting(unittest.TestCase):
         # Pickwalk on Non-Mixed Maya items is already tested in Maya regression tests
         # Pickwalk on Non-Mixed USD items
         ufeUtils.selectPath(ufe.Path([ \
-                               mayaUtils.createUfePathSegment("|world|transform1|proxyShape1"), \
+                               mayaUtils.createUfePathSegment("|transform1|proxyShape1"), \
                                usdUtils.createUfePathSegment("/Room_set/Props/Ball_1") \
                                 ]), True)
         self.snapShotAndTest(([], ['Ball_1']))
         
         
         ufeUtils.selectPath(ufe.Path([ \
-                               mayaUtils.createUfePathSegment("|world|transform1|proxyShape1"), \
+                               mayaUtils.createUfePathSegment("|transform1|proxyShape1"), \
                                usdUtils.createUfePathSegment("/Room_set/Props/Ball_2") \
                                 ]))
         self.snapShotAndTest(([], ['Ball_1', 'Ball_2']))
@@ -198,7 +202,7 @@ class MayaUFEPickWalkTesting(unittest.TestCase):
         
         # Pickwalk on mixed items
         ufeUtils.selectPath(ufe.Path([ \
-                               mayaUtils.createUfePathSegment("|world|transform1|proxyShape1"), \
+                               mayaUtils.createUfePathSegment("|transform1|proxyShape1"), \
                                usdUtils.createUfePathSegment("/Room_set/Props/Ball_1") \
                                 ]), True)
         self.snapShotAndTest(([], ['Ball_1']))

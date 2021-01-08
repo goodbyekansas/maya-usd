@@ -16,7 +16,7 @@
 # limitations under the License.
 #
 
-from ufeTestUtils import usdUtils, mayaUtils
+import usdUtils, mayaUtils
 
 import ufe
 
@@ -62,9 +62,8 @@ class Transform3dMatricesTestCase(unittest.TestCase):
         # Load plugins
         self.assertTrue(self.pluginsLoaded)
 
-        # Read in a simple USD scene: a mesh cylinder at the origin.
-        filePath = os.path.join(os.path.dirname(os.path.realpath(__file__)), "test-samples", "cylinder", "usdCylinder.ma" )
-        cmds.file(filePath, force=True, open=True)
+        # Open usdCylinder.ma scene in testSamples
+        mayaUtils.openCylinderScene()
 
     def assertMatrixAlmostEqual(self, ma, mb):
         for ra, rb in zip(ma, mb):
@@ -92,7 +91,7 @@ class Transform3dMatricesTestCase(unittest.TestCase):
 
         # Next, rotate the USD object by another 30 degrees around X.  To
         # do so, select it first.
-        mayaPathSegment = mayaUtils.createUfePathSegment('|world|mayaUsdTransform|shape')
+        mayaPathSegment = mayaUtils.createUfePathSegment('|mayaUsdTransform|shape')
         usdPathSegment = usdUtils.createUfePathSegment('/pCylinder1')
         cylinderPath = ufe.Path([mayaPathSegment, usdPathSegment])
         cylinderItem = ufe.Hierarchy.createItem(cylinderPath)
@@ -119,7 +118,7 @@ class Transform3dMatricesTestCase(unittest.TestCase):
 
         # Get a Transform3d interface for the proxy shape's transform, and
         # get its transforms.
-        xformPath = ufe.Path(mayaUtils.createUfePathSegment('|world|mayaUsdTransform'))
+        xformPath = ufe.Path(mayaUtils.createUfePathSegment('|mayaUsdTransform'))
         xformItem = ufe.Hierarchy.createItem(xformPath)
         t3d = ufe.Transform3d.transform3d(xformItem)
 

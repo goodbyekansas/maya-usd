@@ -20,26 +20,17 @@
 
 #include "usdMaya/api.h"
 
-#include "pxr/pxr.h"
+#include <mayaUsd/commands/baseListShadingModesCommand.h>
+
+#include <pxr/pxr.h>
 
 #include <maya/MPxCommand.h>
 
 PXR_NAMESPACE_OPEN_SCOPE
 
-class UsdMayaListShadingModesCommand : public MPxCommand
+class PxrMayaUSDListShadingModesCommand : public MayaUsd::MayaUSDListShadingModesCommand
 {
 public:
-    PXRUSDMAYA_API
-    UsdMayaListShadingModesCommand();
-    PXRUSDMAYA_API
-    ~UsdMayaListShadingModesCommand() override;
-
-    PXRUSDMAYA_API
-    MStatus doIt(const MArgList& args) override;
-    bool  isUndoable () const override { return false; };
-
-    PXRUSDMAYA_API
-    static MSyntax  createSyntax();
     PXRUSDMAYA_API
     static void* creator();
 };

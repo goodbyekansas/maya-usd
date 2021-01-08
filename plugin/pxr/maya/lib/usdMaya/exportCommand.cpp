@@ -13,22 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-#include "usdMaya/exportCommand.h"
-
-#include <mayaUsd/fileio/shading/shadingModeRegistry.h>
-#include <mayaUsd/utils/util.h>
-#include <mayaUsd/fileio/jobs/writeJob.h>
-#include <mayaUsd/fileio/utils/writeUtil.h>
-
-#include "pxr/usd/usdGeom/tokens.h"
-
-#include <maya/MArgList.h>
-#include <maya/MArgDatabase.h>
-#include <maya/MFileObject.h>
-#include <maya/MGlobal.h>
-#include <maya/MSelectionList.h>
-#include <maya/MSyntax.h>
-#include <maya/MTime.h>
+#include "exportCommand.h"
 
 PXR_NAMESPACE_OPEN_SCOPE
 
@@ -108,9 +93,6 @@ MSyntax UsdMayaExportCommand::createSyntax()
                    MSyntax::kString);
     syntax.addFlag("-psc",
                    UsdMayaJobExportArgsTokens->parentScope.GetText(),
-                   MSyntax::kString);
-    syntax.addFlag("-ol",
-                   UsdMayaJobExportArgsTokens->overrideLayer.GetText(),
                    MSyntax::kString);
     syntax.addFlag("-ro",
                    UsdMayaJobExportArgsTokens->renderableOnly.GetText(),
@@ -320,4 +302,3 @@ catch (std::exception & e)
 } // end of function
 
 PXR_NAMESPACE_CLOSE_SCOPE
-

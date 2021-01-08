@@ -16,9 +16,8 @@
 # limitations under the License.
 #
 
-from ufeTestUtils import mayaUtils
-from ufeTestUtils import usdUtils
-from ufeTestUtils.testUtils import assertVectorAlmostEqual
+import mayaUtils, usdUtils
+from testUtils import assertVectorAlmostEqual, assertVectorEqual
 
 import ufe
 
@@ -100,6 +99,7 @@ class Object3dTestCase(unittest.TestCase):
         proxyShapePathSegment = mayaUtils.createUfePathSegment(
             proxyShapeMayaPath)
         
+        #######
         # Create a UFE scene item from the sphere prim.
         spherePathSegment = usdUtils.createUfePathSegment('/parent/sphere')
         spherePath = ufe.Path([proxyShapePathSegment, spherePathSegment])
@@ -115,17 +115,32 @@ class Object3dTestCase(unittest.TestCase):
         assertVectorAlmostEqual(self, ufeBBox.min.vector, [-1]*3)
         assertVectorAlmostEqual(self, ufeBBox.max.vector, [1]*3)
 
+        #######
+        # Create a UFE scene item from the parent Xform of the sphere prim.
+        parentPathSegment = usdUtils.createUfePathSegment('/parent')
+        parentPath = ufe.Path([proxyShapePathSegment, parentPathSegment])
+        parentItem = ufe.Hierarchy.createItem(parentPath)
+
+        # Get its Object3d interface.
+        parentObject3d = ufe.Object3d.object3d(parentItem)
+
+        # Get its bounding box.
+        parentUFEBBox = parentObject3d.boundingBox()
+
+        # Compare it to sphere's extents.
+        assertVectorEqual(self, ufeBBox.min.vector, parentUFEBBox.min.vector)
+        assertVectorEqual(self, ufeBBox.max.vector, parentUFEBBox.max.vector)
+
+
+        #######
         # Remove the test file.
         os.remove(usdFilePath)
 
     def testAnimatedBoundingBox(self):
         '''Test the Object3d bounding box interface for animated geometry.'''
 
-        # Load up a scene with a sphere that has an animated radius, with
-        # time connected to the proxy shape.
-        filePath = os.path.join(os.path.dirname(os.path.realpath(__file__)), "test-samples", "sphereAnimatedRadius", "sphereAnimatedRadiusProxyShape.ma" )
-
-        cmds.file(filePath, force=True, open=True)
+        # Open sphereAnimatedRadiusProxyShape.ma scene in testSamples
+        mayaUtils.openSphereAnimatedRadiusScene()
 
         # The extents of the sphere are copied from the .usda file.
         expected = [
@@ -142,7 +157,7 @@ class Object3dTestCase(unittest.TestCase):
 
         # Create an Object3d interface for USD sphere.
         mayaPathSegment = mayaUtils.createUfePathSegment(
-            '|world|transform1|proxyShape1')
+            '|transform1|proxyShape1')
         usdPathSegment = usdUtils.createUfePathSegment('/pSphere1')
 
         spherePath = ufe.Path([mayaPathSegment, usdPathSegment])
@@ -152,7 +167,7 @@ class Object3dTestCase(unittest.TestCase):
 
         # Loop over frames 1 to 10, and compare the values returned to the
         # expected values.
-        for frame in xrange(1,11):
+        for frame in range(1,11):
             cmds.currentTime(frame)
 
             ufeBBox = object3d.boundingBox()
@@ -163,16 +178,15 @@ class Object3dTestCase(unittest.TestCase):
             assertVectorAlmostEqual(self, ufeBBox.max.vector,
                                     expected[frame-1][1], places=6)
 
-    @unittest.skipIf(os.getenv('UFE_PREVIEW_VERSION_NUM', '0000') < '2010', 'testVisibility only available in UFE PR2010 and greater')
     def testVisibility(self):
         '''Test the Object3d visibility methods.'''
 
-        # Open top_layer.ma scene in test-samples
+        # Open top_layer.ma scene in testSamples
         mayaUtils.openTopLayerScene()
 
         # Get a scene item for Ball_35.
         ball35Path = ufe.Path([
-            mayaUtils.createUfePathSegment("|world|transform1|proxyShape1"), 
+            mayaUtils.createUfePathSegment("|transform1|proxyShape1"), 
             usdUtils.createUfePathSegment("/Room_set/Props/Ball_35")])
         ball35Item = ufe.Hierarchy.createItem(ball35Path)
 
@@ -201,19 +215,14 @@ class Object3dTestCase(unittest.TestCase):
         self.assertFalse(object3d.visibility())
 
         # We should have got 'one' notification.
-        # USD Attribute Notification doubling problem:
-        # Note: because we are using set on the usd attribute (just above)
-        #       directly we we receive TWO notifs in our transform3d observer.
-        #       See UsdAttribute.cpp function setUsdAttr() for details.
-        self.assertEqual(visObs.notifications(), 2)
+        self.assertEqual(visObs.notifications(), 1)
 
         # Make it visible.
         object3d.setVisibility(True)
         self.assertTrue(object3d.visibility())
 
         # We should have got one more notification.
-        # Note: same double notif as above.
-        self.assertEqual(visObs.notifications(), 4)
+        self.assertEqual(visObs.notifications(), 2)
 
         # Remove the observer.
         ufe.Object3d.removeObserver(visObs)

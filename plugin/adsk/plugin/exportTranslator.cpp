@@ -16,13 +16,9 @@
 //
 #include "exportTranslator.h"
 
-#include <string>
-#include <set>
-#include <sstream>
-
 #include <mayaUsd/fileio/jobs/jobArgs.h>
-#include <mayaUsd/fileio/shading/shadingModeRegistry.h>
 #include <mayaUsd/fileio/jobs/writeJob.h>
+#include <mayaUsd/fileio/shading/shadingModeRegistry.h>
 #include <mayaUsd/fileio/utils/writeUtil.h>
 
 #include <maya/MFileObject.h>
@@ -30,46 +26,53 @@
 #include <maya/MSelectionList.h>
 #include <maya/MString.h>
 
-
+#include <set>
+#include <sstream>
+#include <string>
 
 PXR_NAMESPACE_USING_DIRECTIVE
 
-MAYAUSD_NS_DEF {
+namespace MAYAUSD_NS_DEF {
 
 const MString UsdMayaExportTranslator::translatorName("USD Export");
 
-void* UsdMayaExportTranslator::creator() {
-    return new UsdMayaExportTranslator();
+void* UsdMayaExportTranslator::creator() { return new UsdMayaExportTranslator(); }
+
+UsdMayaExportTranslator::UsdMayaExportTranslator()
+    : MPxFileTranslator()
+{
 }
 
-UsdMayaExportTranslator::UsdMayaExportTranslator() :
-        MPxFileTranslator() {
-}
+UsdMayaExportTranslator::~UsdMayaExportTranslator() { }
 
-UsdMayaExportTranslator::~UsdMayaExportTranslator() {
-}
+MStatus UsdMayaExportTranslator::writer(
+    const MFileObject&                file,
+    const MString&                    optionsString,
+    MPxFileTranslator::FileAccessMode mode)
+{
 
-MStatus
-UsdMayaExportTranslator::writer(const MFileObject &file, 
-                 const MString &optionsString,
-                 MPxFileTranslator::FileAccessMode mode ) {
+    // If we are in neither of these modes then there won't be anything to do
+    if (mode != MPxFileTranslator::kExportActiveAccessMode
+        && mode != MPxFileTranslator::kExportAccessMode) {
+        return MS::kSuccess;
+    }
 
-    std::string fileName(file.fullName().asChar(), file.fullName().length());
+    std::string  fileName(file.fullName().asChar(), file.fullName().length());
     VtDictionary userArgs;
-    bool exportAnimation = false;
-    GfInterval timeInterval(1.0, 1.0);
-    double frameStride = 1.0;
-    bool append=false;
-    
+    bool         exportAnimation = false;
+    GfInterval   timeInterval(1.0, 1.0);
+    double       frameStride = 1.0;
+    bool         append = false;
+
     std::set<double> frameSamples;
 
     MStringArray filteredTypes;
-    // Get the options 
+    // Get the options
     if (optionsString.length() > 0) {
         MStringArray optionList;
         MStringArray theOption;
         optionsString.split(';', optionList);
-        for(int i=0; i<(int)optionList.length(); ++i) {
+        for (int i = 0; i < (int)optionList.length(); ++i) {
             theOption.clear();
             optionList[i].split('=', theOption);
             if (theOption.length() != 2) {
@@ -79,33 +82,28 @@ UsdMayaExportTranslator::writer(const MFileObject &file,
             std::string argName(theOption[0].asChar());
             if (argName == "animation") {
                 exportAnimation = (theOption[1].asInt() != 0);
-            }
-            else if (argName == "startTime") {
+            } else if (argName == "startTime") {
                 timeInterval.SetMin(theOption[1].asDouble());
-            }
-            else if (argName == "endTime") {
+            } else if (argName == "endTime") {
                 timeInterval.SetMax(theOption[1].asDouble());
-            }
-            else if (argName == "frameStride") {
+            } else if (argName == "frameStride") {
                 frameStride = theOption[1].asDouble();
-            }
-            else if (argName == "filterTypes") {
+            } else if (argName == "filterTypes") {
                 theOption[1].split(',', filteredTypes);
-            }
-            else if (argName == "frameSample") {
+            } else if (argName == "frameSample") {
                 frameSamples.clear();
                 MStringArray samplesStrings;
                 theOption[1].split(' ', samplesStrings);
                 unsigned int nbSams = samplesStrings.length();
-                for(unsigned int sam=0; sam<nbSams; ++sam) {
+                for (unsigned int sam = 0; sam < nbSams; ++sam) {
                     if (samplesStrings[sam].isDouble()) {
                         frameSamples.insert(samplesStrings[sam].asDouble());
                     }
                 }
-            }            
-            else {
+            } else {
                 userArgs[argName] = UsdMayaUtil::ParseArgumentValue(
-                    argName, theOption[1].asChar(),
+                    argName,
+                    theOption[1].asChar(),
                     PXR_NS::UsdMayaJobExportArgs::GetDefaultDictionary());
             }
         }
@@ -118,43 +116,28 @@ UsdMayaExportTranslator::writer(const MFileObject &file,
             // interval with the single start point.
             timeInterval = GfInterval(timeInterval.GetMin());
         }
-    }
-    else {
+    } else {
         // No animation, so empty interval.
         timeInterval = GfInterval();
     }
 
-    MSelectionList objSelList;
-    if(mode == MPxFileTranslator::kExportActiveAccessMode) {
-        // Get selected objects
-        MGlobal::getActiveSelectionList(objSelList);
-    } else if(mode == MPxFileTranslator::kExportAccessMode) {
-        // Get all objects at DAG root
-        objSelList.add("|*", true);
-    }
-
-    // Convert selection list to jobArgs dagPaths
+    MSelectionList           objSelList;
     UsdMayaUtil::MDagPathSet dagPaths;
-    unsigned int len = objSelList.length();
-    for (unsigned int i=0; i < len; i++) {
-        MDagPath dagPath;
-        if (objSelList.getDagPath(i, dagPath) == MS::kSuccess) {
-            dagPaths.insert(dagPath);
-        }
-    }
-    
+    GetFilteredSelectionToExport(
+        (mode == MPxFileTranslator::kExportActiveAccessMode), objSelList, dagPaths);
+
     if (dagPaths.empty()) {
         TF_WARN("No DAG nodes to export. Skipping.");
         return MS::kSuccess;
     }
 
-    const std::vector<double> timeSamples = UsdMayaWriteUtil::GetTimeSamples(
-            timeInterval, frameSamples, frameStride);
-    PXR_NS::UsdMayaJobExportArgs jobArgs = PXR_NS::UsdMayaJobExportArgs::CreateFromDictionary(
-            userArgs, dagPaths, timeSamples);
-    
-    len = filteredTypes.length();
-    for (unsigned int i=0; i < len; ++i) {
+    const std::vector<double> timeSamples
+        = UsdMayaWriteUtil::GetTimeSamples(timeInterval, frameSamples, frameStride);
+    PXR_NS::UsdMayaJobExportArgs jobArgs
+        = PXR_NS::UsdMayaJobExportArgs::CreateFromDictionary(userArgs, dagPaths, timeSamples);
+
+    unsigned int len = filteredTypes.length();
+    for (unsigned int i = 0; i < len; ++i) {
         jobArgs.AddFilteredTypeName(filteredTypes[i].asChar());
     }
 
@@ -162,19 +145,18 @@ UsdMayaExportTranslator::writer(const MFileObject &file,
     if (!writeJob.Write(fileName, append)) {
         return MS::kFailure;
     }
-    
+
     return MS::kSuccess;
 }
 
-MPxFileTranslator::MFileKind
-UsdMayaExportTranslator::identifyFile(
-        const MFileObject& file,
-        const char*  /*buffer*/,
-        short  /*size*/) const
+MPxFileTranslator::MFileKind UsdMayaExportTranslator::identifyFile(
+    const MFileObject& file,
+    const char* /*buffer*/,
+    short /*size*/) const
 {
-    MFileKind retValue = kNotMyFileType;
+    MFileKind     retValue = kNotMyFileType;
     const MString fileName = file.fullName();
-    const int lastIndex = fileName.length() - 1;
+    const int     lastIndex = fileName.length() - 1;
 
     const int periodIndex = fileName.rindex('.');
     if (periodIndex < 0 || periodIndex >= lastIndex) {
@@ -183,14 +165,10 @@ UsdMayaExportTranslator::identifyFile(
 
     const MString fileExtension = fileName.substring(periodIndex + 1, lastIndex);
 
-    if (fileExtension ==
-            UsdMayaTranslatorTokens->UsdFileExtensionDefault.GetText() || 
-        fileExtension ==
-            UsdMayaTranslatorTokens->UsdFileExtensionASCII.GetText() || 
-        fileExtension ==
-            UsdMayaTranslatorTokens->UsdFileExtensionCrate.GetText() ||
-        fileExtension ==
-            UsdMayaTranslatorTokens->UsdFileExtensionPackage.GetText()) {
+    if (fileExtension == UsdMayaTranslatorTokens->UsdFileExtensionDefault.GetText()
+        || fileExtension == UsdMayaTranslatorTokens->UsdFileExtensionASCII.GetText()
+        || fileExtension == UsdMayaTranslatorTokens->UsdFileExtensionCrate.GetText()
+        || fileExtension == UsdMayaTranslatorTokens->UsdFileExtensionPackage.GetText()) {
         retValue = kIsMyFileType;
     }
 
@@ -198,20 +176,19 @@ UsdMayaExportTranslator::identifyFile(
 }
 
 /* static */
-const std::string&
-UsdMayaExportTranslator::GetDefaultOptions()
+const std::string& UsdMayaExportTranslator::GetDefaultOptions()
 {
-    static std::string defaultOptions;
+    static std::string    defaultOptions;
     static std::once_flag once;
     std::call_once(once, []() {
         std::ostringstream optionsStream;
         for (const std::pair<std::string, VtValue> keyValue :
-                PXR_NS::UsdMayaJobExportArgs::GetDefaultDictionary()) {
-            if (keyValue.second.IsHolding<bool>()) {
-                optionsStream << keyValue.first.c_str() << "=" << static_cast<int>(keyValue.second.Get<bool>()) << ";";
-            }
-            else if (keyValue.second.IsHolding<std::string>()) {
-                optionsStream << keyValue.first.c_str() << "=" << keyValue.second.Get<std::string>().c_str() << ";";
+             PXR_NS::UsdMayaJobExportArgs::GetDefaultDictionary()) {
+            bool        canConvert;
+            std::string valueStr;
+            std::tie(canConvert, valueStr) = UsdMayaUtil::ValueToArgument(keyValue.second);
+            if (canConvert) {
+                optionsStream << keyValue.first.c_str() << "=" << valueStr.c_str() << ";";
             }
         }
         optionsStream << "animation=0;";
@@ -226,4 +203,4 @@ UsdMayaExportTranslator::GetDefaultOptions()
     return defaultOptions;
 }
 
-}
+} // namespace MAYAUSD_NS_DEF

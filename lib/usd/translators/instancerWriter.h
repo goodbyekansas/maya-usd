@@ -16,28 +16,24 @@
 #ifndef PXRUSDTRANSLATORS_INSTANCER_WRITER_H
 #define PXRUSDTRANSLATORS_INSTANCER_WRITER_H
 
-/// \file pxrUsdTranslators/instancerWriter.h
+/// \file
 
-#include "pxr/pxr.h"
+#include <mayaUsd/fileio/primWriter.h>
+#include <mayaUsd/fileio/transformWriter.h>
+#include <mayaUsd/fileio/writeJobContext.h>
 
-#include "../../fileio/transformWriter.h"
-
-#include "../../fileio/primWriter.h"
-#include "../../fileio/writeJobContext.h"
-
-#include "pxr/usd/sdf/path.h"
-#include "pxr/usd/usd/timeCode.h"
-#include "pxr/usd/usdGeom/pointInstancer.h"
-#include "pxr/usd/usdGeom/xformOp.h"
+#include <pxr/pxr.h>
+#include <pxr/usd/sdf/path.h>
+#include <pxr/usd/usd/timeCode.h>
+#include <pxr/usd/usdGeom/pointInstancer.h>
+#include <pxr/usd/usdGeom/xformOp.h>
 
 #include <maya/MDagPath.h>
 #include <maya/MFnDependencyNode.h>
 
 #include <vector>
 
-
 PXR_NAMESPACE_OPEN_SCOPE
-
 
 /// \brief Exporter for Maya particle instancer nodes (MFnInstancer).
 /// The instancer node is used in both nParticles and MASH networks.
@@ -55,32 +51,31 @@ class PxrUsdTranslators_InstancerWriter : public UsdMayaTransformWriter
 {
 public:
     PxrUsdTranslators_InstancerWriter(
-            const MFnDependencyNode& depNodeFn,
-            const SdfPath& usdPath,
-            UsdMayaWriteJobContext& jobCtx);
+        const MFnDependencyNode& depNodeFn,
+        const SdfPath&           usdPath,
+        UsdMayaWriteJobContext&  jobCtx);
 
-    void Write(const UsdTimeCode& usdTime) override;
-    void PostExport() override;
-    bool ShouldPruneChildren() const override;
+    void                 Write(const UsdTimeCode& usdTime) override;
+    void                 PostExport() override;
+    bool                 ShouldPruneChildren() const override;
     const SdfPathVector& GetModelPaths() const override;
 
 protected:
-    bool writeInstancerAttrs(
-            const UsdTimeCode& usdTime,
-            const UsdGeomPointInstancer& instancer);
+    bool writeInstancerAttrs(const UsdTimeCode& usdTime, const UsdGeomPointInstancer& instancer);
 
 private:
     bool _NeedsExtraInstancerTranslate(
-            const MDagPath& prototypeDagPath,
-            bool* instancerTranslateAnimated) const;
+        const MDagPath& prototypeDagPath,
+        bool*           instancerTranslateAnimated) const;
 
     /// Used internally by PxrUsdTranslators_InstancerWriter to keep track of the
     /// instancerTranslate xformOp for compensating Maya's instancer position
     /// behavior.
-    struct _TranslateOpData {
-        MDagPath mayaPath;
+    struct _TranslateOpData
+    {
+        MDagPath       mayaPath;
         UsdGeomXformOp op;
-        bool isAnimated;
+        bool           isAnimated;
     };
 
     /// Number of prototypes that have been set up so far.
@@ -95,8 +90,6 @@ private:
     SdfPathVector _modelPaths;
 };
 
-
 PXR_NAMESPACE_CLOSE_SCOPE
-
 
 #endif

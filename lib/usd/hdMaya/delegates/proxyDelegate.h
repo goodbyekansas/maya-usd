@@ -13,15 +13,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-
 #ifndef HDMAYA_AL_PROXY_DELEGATE_H
 #define HDMAYA_AL_PROXY_DELEGATE_H
 
-#include "delegate.h"
-
-#include <pxr/pxr.h>
+#include <hdMaya/delegates/delegate.h>
 
 #include <pxr/imaging/hd/renderIndex.h>
+#include <pxr/pxr.h>
 #include <pxr/usd/sdf/path.h>
 #include <pxr/usd/usd/stage.h>
 #include <pxr/usdImaging/usdImaging/delegate.h>
@@ -39,7 +37,8 @@ PXR_NAMESPACE_OPEN_SCOPE
 class HdMayaProxyAdapter;
 class MayaUsdProxyShapeBase;
 
-class HdMayaProxyDelegate : public HdMayaDelegate {
+class HdMayaProxyDelegate : public HdMayaDelegate
+{
 public:
     HdMayaProxyDelegate(const InitData& initData);
 
@@ -55,16 +54,25 @@ public:
 
     // TODO: implement this override this to add selection support
     // for non-ufe
-//    void PopulateSelectedPaths(
-//        const MSelectionList& mayaSelection, SdfPathVector& selectedSdfPaths,
-//        const HdSelectionSharedPtr& selection) override;
+    //    void PopulateSelectedPaths(
+    //        const MSelectionList& mayaSelection, SdfPathVector& selectedSdfPaths,
+    //        const HdSelectionSharedPtr& selection) override;
 
 #if WANT_UFE_BUILD
     void PopulateSelectedPaths(
-        const UFE_NS::Selection& ufeSelection, SdfPathVector& selectedSdfPaths,
+        const UFE_NS::Selection&    ufeSelection,
+        SdfPathVector&              selectedSdfPaths,
         const HdSelectionSharedPtr& selection) override;
     bool SupportsUfeSelection() override;
 #endif // WANT_UFE_BUILD
+
+#if MAYA_API_VERSION >= 20210000
+    void PopulateSelectionList(
+        const HdxPickHitVector&          hits,
+        const MHWRender::MSelectionInfo& selectInfo,
+        MSelectionList&                  selectionList,
+        MPointArray&                     worldSpaceHitPts) override;
+#endif
 };
 
 PXR_NAMESPACE_CLOSE_SCOPE

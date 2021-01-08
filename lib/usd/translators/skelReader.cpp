@@ -13,25 +13,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-#include "pxr/pxr.h"
+#include <mayaUsd/fileio/primReaderRegistry.h>
+#include <mayaUsd/fileio/translators/translatorSkel.h>
+#include <mayaUsd/fileio/translators/translatorUtil.h>
 
-#include "../../fileio/primReaderRegistry.h"
-#include "../../fileio/translators/translatorSkel.h"
-#include "../../fileio/translators/translatorUtil.h"
-
-#include "pxr/usd/usd/prim.h"
-#include "pxr/usd/usd/primRange.h"
-#include "pxr/usd/usdGeom/xform.h"
-#include "pxr/usd/usdSkel/cache.h"
-#include "pxr/usd/usdSkel/root.h"
-#include "pxr/usd/usdSkel/skeletonQuery.h"
-#include "pxr/usd/usdSkel/skinningQuery.h"
+#include <pxr/pxr.h>
+#include <pxr/usd/usd/prim.h>
+#include <pxr/usd/usd/primRange.h>
+#include <pxr/usd/usdGeom/xform.h>
+#include <pxr/usd/usdSkel/cache.h>
+#include <pxr/usd/usdSkel/root.h>
+#include <pxr/usd/usdSkel/skeletonQuery.h>
+#include <pxr/usd/usdSkel/skinningQuery.h>
 
 #include <maya/MObject.h>
 
-
 PXR_NAMESPACE_OPEN_SCOPE
-
 
 /// Prim reader for skeletons.
 /// This produce a joint hierarchy, possibly animated, corresponding
@@ -40,9 +37,11 @@ class UsdMayaPrimReaderSkeleton : public UsdMayaPrimReader
 {
 public:
     UsdMayaPrimReaderSkeleton(const UsdMayaPrimReaderArgs& args)
-        : UsdMayaPrimReader(args) {}
+        : UsdMayaPrimReader(args)
+    {
+    }
 
-    ~UsdMayaPrimReaderSkeleton() override {}
+    ~UsdMayaPrimReaderSkeleton() override { }
 
     bool Read(UsdMayaPrimReaderContext* context) override;
 
@@ -52,16 +51,12 @@ private:
     UsdSkelCache _cache;
 };
 
-
-TF_REGISTRY_FUNCTION_WITH_TAG(UsdMayaPrimReaderRegistry, UsdSkelSkeleton) {
-    UsdMayaPrimReaderRegistry::Register<UsdSkelSkeleton>(
-        [](const UsdMayaPrimReaderArgs& args)
-        {
-            return UsdMayaPrimReaderSharedPtr(
-                new UsdMayaPrimReaderSkeleton(args));
-        });
+TF_REGISTRY_FUNCTION_WITH_TAG(UsdMayaPrimReaderRegistry, UsdSkelSkeleton)
+{
+    UsdMayaPrimReaderRegistry::Register<UsdSkelSkeleton>([](const UsdMayaPrimReaderArgs& args) {
+        return UsdMayaPrimReaderSharedPtr(new UsdMayaPrimReaderSkeleton(args));
+    });
 }
-
 
 /// Prim reader for a UsdSkelRoot.
 /// This post-processes the skinnable prims beneath a UsdSkelRoot
@@ -70,9 +65,11 @@ class UsdMayaPrimReaderSkelRoot : public UsdMayaPrimReader
 {
 public:
     UsdMayaPrimReaderSkelRoot(const UsdMayaPrimReaderArgs& args)
-        : UsdMayaPrimReader(args) {}
+        : UsdMayaPrimReader(args)
+    {
+    }
 
-    ~UsdMayaPrimReaderSkelRoot() override {}
+    ~UsdMayaPrimReaderSkelRoot() override { }
 
     bool Read(UsdMayaPrimReaderContext* context) override;
 
@@ -86,20 +83,14 @@ private:
     UsdSkelCache _cache;
 };
 
-
-
-TF_REGISTRY_FUNCTION_WITH_TAG(UsdMayaPrimReaderRegistry, UsdSkelRoot) {
-    UsdMayaPrimReaderRegistry::Register<UsdSkelRoot>(
-        [](const UsdMayaPrimReaderArgs& args)
-        {
-            return UsdMayaPrimReaderSharedPtr(
-                new UsdMayaPrimReaderSkelRoot(args));
-        });
+TF_REGISTRY_FUNCTION_WITH_TAG(UsdMayaPrimReaderRegistry, UsdSkelRoot)
+{
+    UsdMayaPrimReaderRegistry::Register<UsdSkelRoot>([](const UsdMayaPrimReaderArgs& args) {
+        return UsdMayaPrimReaderSharedPtr(new UsdMayaPrimReaderSkelRoot(args));
+    });
 }
 
-
-bool
-UsdMayaPrimReaderSkeleton::Read(UsdMayaPrimReaderContext* context)
+bool UsdMayaPrimReaderSkeleton::Read(UsdMayaPrimReaderContext* context)
 {
     UsdSkelSkeleton skel(_GetArgs().GetUsdPrim());
     if (!TF_VERIFY(skel))
@@ -107,8 +98,7 @@ UsdMayaPrimReaderSkeleton::Read(UsdMayaPrimReaderContext* context)
 
     if (UsdSkelSkeletonQuery skelQuery = _cache.GetSkelQuery(skel)) {
 
-        MObject parentNode = context->GetMayaNode(
-            skel.GetPrim().GetPath().GetParentPath(), true);
+        MObject parentNode = context->GetMayaNode(skel.GetPrim().GetPath().GetParentPath(), true);
 
         // Build out a joint hierarchy.
         VtArray<MObject> joints;
@@ -119,10 +109,9 @@ UsdMayaPrimReaderSkeleton::Read(UsdMayaPrimReaderContext* context)
             // This is not necessary for skinning to function i Maya, but is not
             // necessary in order to properly round-trip the Skeleton's
             // restTransforms, and is a requirement of some exporters.
-            // The dagPose command also will not work without this.  
+            // The dagPose command also will not work without this.
             MObject bindPose;
-            if (UsdMayaTranslatorSkel::CreateBindPose(
-                    skelQuery, joints, context, &bindPose)) {
+            if (UsdMayaTranslatorSkel::CreateBindPose(skelQuery, joints, context, &bindPose)) {
                 return true;
             }
         }
@@ -130,9 +119,7 @@ UsdMayaPrimReaderSkeleton::Read(UsdMayaPrimReaderContext* context)
     return false;
 }
 
-
-bool
-UsdMayaPrimReaderSkelRoot::Read(UsdMayaPrimReaderContext* context)
+bool UsdMayaPrimReaderSkelRoot::Read(UsdMayaPrimReaderContext* context)
 {
     UsdSkelRoot skelRoot(_GetArgs().GetUsdPrim());
     if (!TF_VERIFY(skelRoot))
@@ -141,9 +128,9 @@ UsdMayaPrimReaderSkelRoot::Read(UsdMayaPrimReaderContext* context)
     // First pass through:
     // The skel root itself is a transform, so produce a transform.
     // Skeletal bindings will be handled as a post sub-tree process.
-    MObject parentNode =
-        context->GetMayaNode(skelRoot.GetPrim().GetPath().GetParentPath(),
-                             /*findAncestors*/ true);
+    MObject parentNode = context->GetMayaNode(
+        skelRoot.GetPrim().GetPath().GetParentPath(),
+        /*findAncestors*/ true);
 
     MStatus status;
     MObject obj;
@@ -151,39 +138,43 @@ UsdMayaPrimReaderSkelRoot::Read(UsdMayaPrimReaderContext* context)
         skelRoot.GetPrim(), parentNode, _GetArgs(), context, &status, &obj);
 }
 
-
-void
-UsdMayaPrimReaderSkelRoot::PostReadSubtree(
-    UsdMayaPrimReaderContext* context)
+void UsdMayaPrimReaderSkelRoot::PostReadSubtree(UsdMayaPrimReaderContext* context)
 {
     UsdSkelRoot skelRoot(_GetArgs().GetUsdPrim());
     if (!TF_VERIFY(skelRoot))
         return;
-    
+
     // Compute skel bindings and create skin clusters for bound skels
     // We do this in a post-subtree stage to ensure that any skinnable
     // prims we produce skin clusters for have been processed first.
 
+    std::vector<UsdSkelBinding> bindings;
+
+#if USD_VERSION_NUM > 2008
+    _cache.Populate(skelRoot, UsdTraverseInstanceProxies());
+
+    if (!_cache.ComputeSkelBindings(skelRoot, &bindings, UsdTraverseInstanceProxies())) {
+        return;
+    }
+#else
     _cache.Populate(skelRoot);
 
-    std::vector<UsdSkelBinding> bindings;
     if (!_cache.ComputeSkelBindings(skelRoot, &bindings)) {
         return;
     }
+#endif
 
     for (const UsdSkelBinding& binding : bindings) {
         if (binding.GetSkinningTargets().empty())
             continue;
 
-        if (const UsdSkelSkeletonQuery& skelQuery =
-            _cache.GetSkelQuery(binding.GetSkeleton())) {
-            
+        if (const UsdSkelSkeletonQuery& skelQuery = _cache.GetSkelQuery(binding.GetSkeleton())) {
+
             VtArray<MObject> joints;
-            if (!UsdMayaTranslatorSkel::GetJoints(
-                    skelQuery, context, &joints)) {
+            if (!UsdMayaTranslatorSkel::GetJoints(skelQuery, context, &joints)) {
                 continue;
             }
-            
+
             for (const auto& skinningQuery : binding.GetSkinningTargets()) {
 
                 const UsdPrim& skinnedPrim = skinningQuery.GetPrim();
@@ -202,13 +193,12 @@ UsdMayaPrimReaderSkelRoot::PostReadSubtree(
                     VtIntArray indices(joints.size());
                     for (size_t i = 0; i < joints.size(); ++i)
                         indices[i] = i;
-                    
+
                     VtIntArray remappedIndices;
-                    if (!skinningQuery.GetMapper()->Remap(
-                            indices, &remappedIndices)) {
+                    if (!skinningQuery.GetMapper()->Remap(indices, &remappedIndices)) {
                         continue;
                     }
-                    
+
                     skinningJoints.resize(remappedIndices.size());
                     for (size_t i = 0; i < remappedIndices.size(); ++i) {
                         int index = remappedIndices[i];
@@ -218,17 +208,20 @@ UsdMayaPrimReaderSkelRoot::PostReadSubtree(
                     }
                 }
 
-                MObject bindPose
-                    = UsdMayaTranslatorSkel::GetBindPose(skelQuery, context);
+                MObject bindPose = UsdMayaTranslatorSkel::GetBindPose(skelQuery, context);
 
                 // Add a skin cluster to skin this prim.
                 UsdMayaTranslatorSkel::CreateSkinCluster(
-                    skelQuery, skinningQuery, skinningJoints,
-                    skinnedPrim, _GetArgs(), context, bindPose);
+                    skelQuery,
+                    skinningQuery,
+                    skinningJoints,
+                    skinnedPrim,
+                    _GetArgs(),
+                    context,
+                    bindPose);
             }
         }
     }
 }
-
 
 PXR_NAMESPACE_CLOSE_SCOPE

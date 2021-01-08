@@ -16,36 +16,30 @@
 #ifndef PXRUSDTRANSLATORS_MAYAREFERENCE_UPDATER_H
 #define PXRUSDTRANSLATORS_MAYAREFERENCE_UPDATER_H
 
-/// \file pxrUsdTranslators/mayaReferenceUpdater.h
+#include <mayaUsd/fileio/primUpdater.h>
 
-#include "pxr/pxr.h"
-
-#include "../../fileio/primUpdater.h"
+#include <pxr/pxr.h>
 
 #include <maya/MFnDependencyNode.h>
-
 
 PXR_NAMESPACE_OPEN_SCOPE
 
 class SdfPath;
 
-
 /// Exports Maya cameras to UsdGeomCamera.
 class PxrUsdTranslators_MayaReferenceUpdater : public UsdMayaPrimUpdater
 {
-    public:
-        PxrUsdTranslators_MayaReferenceUpdater(
-                const MFnDependencyNode& depNodeFn,
-                const SdfPath& usdPath);
+public:
+    PxrUsdTranslators_MayaReferenceUpdater(
+        const MFnDependencyNode& depNodeFn,
+        const SdfPath&           usdPath);
 
-        bool Pull(UsdMayaPrimUpdaterContext* context) override;
-        void Clear(UsdMayaPrimUpdaterContext* context) override;
+    bool Pull(UsdMayaPrimUpdaterContext* context) override;
+    void Clear(UsdMayaPrimUpdaterContext* context) override;
 
-    protected:
+protected:
 };
 
-
 PXR_NAMESPACE_CLOSE_SCOPE
-
 
 #endif

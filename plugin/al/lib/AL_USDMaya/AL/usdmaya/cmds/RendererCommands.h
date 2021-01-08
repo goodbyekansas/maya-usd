@@ -15,15 +15,10 @@
 //
 #pragma once
 
-#include "../Api.h"
+#include <AL/maya/utils/MayaHelperMacros.h>
+#include <AL/usdmaya/Api.h>
 
-#include "AL/maya/utils/MayaHelperMacros.h"
-
-#include "maya/MPxCommand.h"
-
-#if MAYA_API_VERSION < 201800
-#include "maya/MArgDatabase.h"
-#endif
+#include <maya/MPxCommand.h>
 
 namespace AL {
 namespace usdmaya {
@@ -33,14 +28,14 @@ namespace cmds {
 /// \brief  Get / Set renderer plugin settings
 /// \ingroup commands
 //----------------------------------------------------------------------------------------------------------------------
-class ManageRenderer
-  : public MPxCommand
+class ManageRenderer : public MPxCommand
 {
 public:
-  AL_MAYA_DECLARE_COMMAND();
+    AL_MAYA_DECLARE_COMMAND();
+
 private:
-  bool isUndoable() const override;
-  MStatus doIt(const MArgList& args) override;
+    bool    isUndoable() const override;
+    MStatus doIt(const MArgList& args) override;
 };
 
 /// \brief  function called on startup to generate the menu & option boxes for the layer commands
@@ -49,7 +44,7 @@ AL_USDMAYA_PUBLIC
 void constructRendererCommandGuis();
 
 //----------------------------------------------------------------------------------------------------------------------
-} // cmds
-} // usdmaya
-} // AL
+} // namespace cmds
+} // namespace usdmaya
+} // namespace AL
 //----------------------------------------------------------------------------------------------------------------------

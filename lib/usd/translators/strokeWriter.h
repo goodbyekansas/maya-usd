@@ -16,40 +16,33 @@
 #ifndef PXRUSDTRANSLATORS_STROKE_WRITER_H
 #define PXRUSDTRANSLATORS_STROKE_WRITER_H
 
-/// \file pxrUsdTranslators/strokeWriter.h
+/// \file
 
-#include "pxr/pxr.h"
+#include <mayaUsd/fileio/primWriter.h>
+#include <mayaUsd/fileio/writeJobContext.h>
 
-#include "../../fileio/primWriter.h"
-#include "../../fileio/writeJobContext.h"
-
-#include "pxr/usd/sdf/path.h"
-#include "pxr/usd/usd/timeCode.h"
+#include <pxr/pxr.h>
+#include <pxr/usd/sdf/path.h>
+#include <pxr/usd/usd/timeCode.h>
 
 #include <maya/MFnDependencyNode.h>
 
-
 PXR_NAMESPACE_OPEN_SCOPE
-
 
 /// Exports Maya stroke objects (MFnPfxGeometry) as UsdGeomBasisCurves.
 class PxrUsdTranslators_StrokeWriter : public UsdMayaPrimWriter
 {
 public:
     PxrUsdTranslators_StrokeWriter(
-            const MFnDependencyNode& depNodeFn,
-            const SdfPath& usdPath,
-            UsdMayaWriteJobContext& jobCtx);
+        const MFnDependencyNode& depNodeFn,
+        const SdfPath&           usdPath,
+        UsdMayaWriteJobContext&  jobCtx);
 
     void Write(const UsdTimeCode& usdTime) override;
 
-    bool ExportsGprims() const override {
-        return true;
-    }
+    bool ExportsGprims() const override { return true; }
 };
 
-
 PXR_NAMESPACE_CLOSE_SCOPE
-
 
 #endif

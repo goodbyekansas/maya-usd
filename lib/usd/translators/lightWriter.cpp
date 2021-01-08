@@ -13,13 +13,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-
-#include "../../fileio/translators/translatorRfMLight.h"
-#include "../../fileio/primWriterRegistry.h"
-
+#include <mayaUsd/fileio/primWriterRegistry.h>
+#include <mayaUsd/fileio/translators/translatorRfMLight.h>
 
 PXR_NAMESPACE_OPEN_SCOPE
-
 
 PXRUSDMAYA_DEFINE_WRITER(PxrAovLight, args, context)
 {
@@ -65,6 +62,5 @@ PXRUSDMAYA_DEFINE_WRITER(PxrSphereLight, args, context)
 {
     return UsdMayaTranslatorRfMLight::Write(args, context);
 }
-
 
 PXR_NAMESPACE_CLOSE_SCOPE

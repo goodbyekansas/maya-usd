@@ -18,15 +18,15 @@
 import maya.api.OpenMaya as om
 import maya.cmds as cmds
 
-from ufeTestUtils import usdUtils, mayaUtils, ufeUtils
-from ufeTestUtils.testUtils import assertVectorAlmostEqual
+import usdUtils, mayaUtils, ufeUtils
+from testUtils import assertVectorAlmostEqual
 import testTRSBase
 import ufe
 
 import unittest
 
 from functools import partial
-    
+
 def transform3dScale(transform3d):
     matrix = om.MMatrix(transform3d.inclusiveMatrix().matrix)
     return om.MTransformationMatrix(matrix).scale(om.MSpace.kObject)
@@ -81,7 +81,7 @@ class ScaleCmdTestCase(testTRSBase.TRSTestCaseBase):
         self.runTimeScale = None
         self.ufeScale = None
 
-        # Open top_layer.ma scene in test-samples
+        # Open top_layer.ma scene in testSamples
         mayaUtils.openTopLayerScene()
         
         # Create some extra Maya nodes
@@ -132,7 +132,7 @@ class ScaleCmdTestCase(testTRSBase.TRSTestCaseBase):
         self.rewindMemento()
         self.fforwardMemento()
 
-    def runMultiSelectTestScale(self, items, expected):
+    def runMultiSelectTestScale(self, items, expected, places=7):
         '''Engine method to run multiple selection scale test.'''
 
         # Save the initial positions to the memento list.
@@ -142,7 +142,7 @@ class ScaleCmdTestCase(testTRSBase.TRSTestCaseBase):
         for relativeScale in [[4, 5, 6], [0.5, 0.2, 0.1]]:
             cmds.scale(*relativeScale, relative=True)
             expected = multiSelectCombineScales(expected, relativeScale)
-            self.multiSelectSnapShotAndTest(items, expected)
+            self.multiSelectSnapShotAndTest(items, expected, places)
 
         # Test undo, redo.
         self.multiSelectRewindMemento(items)
@@ -171,15 +171,12 @@ class ScaleCmdTestCase(testTRSBase.TRSTestCaseBase):
 
         self.runTestScale(expected)
 
-    # Note: marking as expected failure for now as sometimes it passes and
-    #       sometimes it fails with: AssertionError: 0.5 != 2.0 within 7 places
-    @unittest.expectedFailure
     def testScaleUSD(self):
         '''Scale USD object, read through the Transform3d interface.'''
 
         # Select Ball_35 to scale it.
         ball35Path = ufe.Path([
-            mayaUtils.createUfePathSegment("|world|transform1|proxyShape1"), 
+            mayaUtils.createUfePathSegment("|transform1|proxyShape1"), 
             usdUtils.createUfePathSegment("/Room_set/Props/Ball_35")])
         ball35Item = ufe.Hierarchy.createItem(ball35Path)
 
@@ -208,19 +205,14 @@ class ScaleCmdTestCase(testTRSBase.TRSTestCaseBase):
         # Save the initial position to the memento list.
         expected = ball35Scale()
 
-        # MAYA-96058: unfortunately, scale command currently requires a scale
-        # manipulator to be created to update the UFE object.
-        manipCtx = cmds.manipScaleContext()
-        cmds.setToolTo(manipCtx)
-
         self.runTestScale(expected)
 
-    def _testMultiSelectScaleUSD(self):
+    def testMultiSelectScaleUSD(self):
         '''Scale multiple USD objects, read through Transform3d interface.'''
 
         # Select multiple balls to scale them.
         proxyShapePathSegment = mayaUtils.createUfePathSegment(
-            "|world|transform1|proxyShape1")
+            "|transform1|proxyShape1")
 
         # Test passes for a single item.
         # balls = ['Ball_33']
@@ -242,7 +234,7 @@ class ScaleCmdTestCase(testTRSBase.TRSTestCaseBase):
         proxyShapeXformFn = om.MFnTransform(proxyShapeXformObj)
 
         def usdSceneItemScale(item):
-            prim = usdUtils.getPrimFromSceneItem(ball35Item)
+            prim = usdUtils.getPrimFromSceneItem(item)
             if not prim.HasAttribute('xformOp:scale'):
                 return proxyShapeXformFn.scale()
             else:
@@ -267,10 +259,4 @@ class ScaleCmdTestCase(testTRSBase.TRSTestCaseBase):
         # Save the initial positions to the memento list.
         expected = [usdSceneItemScale(ballItem) for ballItem in ballItems]
 
-        # MAYA-96058: unfortunately, scale command currently requires a scale
-        # manipulator to be created to update the UFE object.
-        manipCtx = cmds.manipScaleContext()
-        cmds.setToolTo(manipCtx)
-
-        #Temporarily disabling undo redo until we fix it for PR 94
-        self.runMultiSelectTestScale(ballItems, expected)
+        self.runMultiSelectTestScale(ballItems, expected, places=6)

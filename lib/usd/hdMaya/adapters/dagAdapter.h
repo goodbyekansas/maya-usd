@@ -16,39 +16,34 @@
 #ifndef HDMAYA_DG_ADAPTER_H
 #define HDMAYA_DG_ADAPTER_H
 
-#include <pxr/pxr.h>
+#include <hdMaya/adapters/adapter.h>
+#include <hdMaya/adapters/adapterDebugCodes.h>
+#include <hdMaya/utils.h>
 
 #include <pxr/base/gf/matrix4d.h>
 #include <pxr/base/gf/range3d.h>
-
 #include <pxr/base/tf/token.h>
-
 #include <pxr/imaging/hd/meshTopology.h>
 #include <pxr/imaging/hd/renderIndex.h>
 #include <pxr/imaging/hd/sceneDelegate.h>
-
-#include <functional>
+#include <pxr/pxr.h>
 
 #include <maya/MBoundingBox.h>
 #include <maya/MDagPath.h>
 #include <maya/MFn.h>
 #include <maya/MFnDagNode.h>
 #include <maya/MMatrix.h>
-
 #include <maya/MMessage.h>
 
-#include "adapter.h"
-#include "adapterDebugCodes.h"
-#include "../utils.h"
+#include <functional>
 
 PXR_NAMESPACE_OPEN_SCOPE
 
-class HdMayaDagAdapter : public HdMayaAdapter {
+class HdMayaDagAdapter : public HdMayaAdapter
+{
 protected:
     HDMAYA_API
-    HdMayaDagAdapter(
-        const SdfPath& id, HdMayaDelegateCtx* delegate,
-        const MDagPath& dagPath);
+    HdMayaDagAdapter(const SdfPath& id, HdMayaDelegateCtx* delegate, const MDagPath& dagPath);
 
 public:
     HDMAYA_API
@@ -64,21 +59,19 @@ public:
     HDMAYA_API
     const GfMatrix4d& GetTransform();
     HDMAYA_API
-    size_t SampleTransform(
-        size_t maxSampleCount, float* times, GfMatrix4d* samples);
+    size_t SampleTransform(size_t maxSampleCount, float* times, GfMatrix4d* samples);
     HDMAYA_API
-    bool UpdateVisibility();
-    bool IsVisible(bool checkDirty = true);
+    bool            UpdateVisibility();
+    bool            IsVisible(bool checkDirty = true);
     const MDagPath& GetDagPath() const { return _dagPath; }
-    void InvalidateTransform() { _invalidTransform = true; }
-    bool IsInstanced() const { return _isInstanced; }
+    void            InvalidateTransform() { _invalidTransform = true; }
+    bool            IsInstanced() const { return _isInstanced; }
     HDMAYA_API
     SdfPath GetInstancerID() const;
     HDMAYA_API
     virtual VtIntArray GetInstanceIndices(const SdfPath& prototypeId);
     HDMAYA_API
-    HdPrimvarDescriptorVector GetInstancePrimvarDescriptors(
-        HdInterpolation interpolation) const;
+    HdPrimvarDescriptorVector GetInstancePrimvarDescriptors(HdInterpolation interpolation) const;
     HDMAYA_API
     VtValue GetInstancePrimvar(const TfToken& key);
 
@@ -91,12 +84,12 @@ protected:
     virtual bool _GetVisibility() const;
 
 private:
-    MDagPath _dagPath;
+    MDagPath   _dagPath;
     GfMatrix4d _transform[2];
-    bool _isVisible = true;
-    bool _visibilityDirty = true;
-    bool _invalidTransform = true;
-    bool _isInstanced = false;
+    bool       _isVisible = true;
+    bool       _visibilityDirty = true;
+    bool       _invalidTransform = true;
+    bool       _isInstanced = false;
 };
 
 PXR_NAMESPACE_CLOSE_SCOPE

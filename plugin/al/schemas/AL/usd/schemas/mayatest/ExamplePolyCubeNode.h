@@ -26,21 +26,19 @@
 
 /// \file AL_USDMayaSchemasTest/ExamplePolyCubeNode.h
 
-#include "pxr/pxr.h"
-#include "./api.h"
-#include "pxr/usd/usd/typed.h"
-#include "pxr/usd/usd/prim.h"
-#include "pxr/usd/usd/stage.h"
-#include "./tokens.h"
+#include "api.h"
+#include "tokens.h"
 
-#include "pxr/base/vt/value.h"
-
-#include "pxr/base/gf/vec3d.h"
-#include "pxr/base/gf/vec3f.h"
-#include "pxr/base/gf/matrix4d.h"
-
-#include "pxr/base/tf/token.h"
-#include "pxr/base/tf/type.h"
+#include <pxr/base/gf/matrix4d.h>
+#include <pxr/base/gf/vec3d.h>
+#include <pxr/base/gf/vec3f.h>
+#include <pxr/base/tf/token.h>
+#include <pxr/base/tf/type.h>
+#include <pxr/base/vt/value.h>
+#include <pxr/pxr.h>
+#include <pxr/usd/usd/prim.h>
+#include <pxr/usd/usd/stage.h>
+#include <pxr/usd/usd/typed.h>
 
 PXR_NAMESPACE_OPEN_SCOPE
 
@@ -66,7 +64,7 @@ public:
     /// Equivalent to AL_usd_ExamplePolyCubeNode::Get(prim.GetStage(), prim.GetPath())
     /// for a \em valid \p prim, but will not immediately throw an error for
     /// an invalid \p prim
-    explicit AL_usd_ExamplePolyCubeNode(const UsdPrim& prim=UsdPrim())
+    explicit AL_usd_ExamplePolyCubeNode(const UsdPrim& prim = UsdPrim())
         : UsdTyped(prim)
     {
     }
@@ -87,8 +85,7 @@ public:
     /// class and all its ancestor classes.  Does not include attributes that
     /// may be authored by custom/extended methods of the schemas involved.
     AL_USDMAYASCHEMASTEST_API
-    static const TfTokenVector &
-    GetSchemaAttributeNames(bool includeInherited=true);
+    static const TfTokenVector& GetSchemaAttributeNames(bool includeInherited = true);
 
     /// Return a AL_usd_ExamplePolyCubeNode holding the prim adhering to this
     /// schema at \p path on \p stage.  If no prim exists at \p path on
@@ -100,8 +97,7 @@ public:
     /// \endcode
     ///
     AL_USDMAYASCHEMASTEST_API
-    static AL_usd_ExamplePolyCubeNode
-    Get(const UsdStagePtr &stage, const SdfPath &path);
+    static AL_usd_ExamplePolyCubeNode Get(const UsdStagePtr& stage, const SdfPath& path);
 
     /// Attempt to ensure a \a UsdPrim adhering to this schema at \p path
     /// is defined (according to UsdPrim::IsDefined()) on this stage.
@@ -126,8 +122,7 @@ public:
     /// the opinion at the current EditTarget.
     ///
     AL_USDMAYASCHEMASTEST_API
-    static AL_usd_ExamplePolyCubeNode
-    Define(const UsdStagePtr &stage, const SdfPath &path);
+    static AL_usd_ExamplePolyCubeNode Define(const UsdStagePtr& stage, const SdfPath& path);
 
 protected:
     /// Returns the type of schema this class belongs to.
@@ -140,17 +135,17 @@ private:
     // needs to invoke _GetStaticTfType.
     friend class UsdSchemaRegistry;
     AL_USDMAYASCHEMASTEST_API
-    static const TfType &_GetStaticTfType();
+    static const TfType& _GetStaticTfType();
 
     static bool _IsTypedSchema();
 
     // override SchemaBase virtuals.
     AL_USDMAYASCHEMASTEST_API
-    virtual const TfType &_GetTfType() const;
+    virtual const TfType& _GetTfType() const;
 
 public:
     // --------------------------------------------------------------------- //
-    // WIDTH 
+    // WIDTH
     // --------------------------------------------------------------------- //
     /// the width of the cube
     ///
@@ -161,17 +156,18 @@ public:
     AL_USDMAYASCHEMASTEST_API
     UsdAttribute GetWidthAttr() const;
 
-    /// See GetWidthAttr(), and also 
+    /// See GetWidthAttr(), and also
     /// \ref Usd_Create_Or_Get_Property for when to use Get vs Create.
     /// If specified, author \p defaultValue as the attribute's default,
     /// sparsely (when it makes sense to do so) if \p writeSparsely is \c true -
     /// the default for \p writeSparsely is \c false.
     AL_USDMAYASCHEMASTEST_API
-    UsdAttribute CreateWidthAttr(VtValue const &defaultValue = VtValue(), bool writeSparsely=false) const;
+    UsdAttribute
+    CreateWidthAttr(VtValue const& defaultValue = VtValue(), bool writeSparsely = false) const;
 
 public:
     // --------------------------------------------------------------------- //
-    // HEIGHT 
+    // HEIGHT
     // --------------------------------------------------------------------- //
     /// the height of the cube
     ///
@@ -182,17 +178,18 @@ public:
     AL_USDMAYASCHEMASTEST_API
     UsdAttribute GetHeightAttr() const;
 
-    /// See GetHeightAttr(), and also 
+    /// See GetHeightAttr(), and also
     /// \ref Usd_Create_Or_Get_Property for when to use Get vs Create.
     /// If specified, author \p defaultValue as the attribute's default,
     /// sparsely (when it makes sense to do so) if \p writeSparsely is \c true -
     /// the default for \p writeSparsely is \c false.
     AL_USDMAYASCHEMASTEST_API
-    UsdAttribute CreateHeightAttr(VtValue const &defaultValue = VtValue(), bool writeSparsely=false) const;
+    UsdAttribute
+    CreateHeightAttr(VtValue const& defaultValue = VtValue(), bool writeSparsely = false) const;
 
 public:
     // --------------------------------------------------------------------- //
-    // DEPTH 
+    // DEPTH
     // --------------------------------------------------------------------- //
     /// the depth of the cube
     ///
@@ -203,21 +200,22 @@ public:
     AL_USDMAYASCHEMASTEST_API
     UsdAttribute GetDepthAttr() const;
 
-    /// See GetDepthAttr(), and also 
+    /// See GetDepthAttr(), and also
     /// \ref Usd_Create_Or_Get_Property for when to use Get vs Create.
     /// If specified, author \p defaultValue as the attribute's default,
     /// sparsely (when it makes sense to do so) if \p writeSparsely is \c true -
     /// the default for \p writeSparsely is \c false.
     AL_USDMAYASCHEMASTEST_API
-    UsdAttribute CreateDepthAttr(VtValue const &defaultValue = VtValue(), bool writeSparsely=false) const;
+    UsdAttribute
+    CreateDepthAttr(VtValue const& defaultValue = VtValue(), bool writeSparsely = false) const;
 
 public:
     // ===================================================================== //
-    // Feel free to add custom code below this line, it will be preserved by 
-    // the code generator. 
+    // Feel free to add custom code below this line, it will be preserved by
+    // the code generator.
     //
-    // Just remember to: 
-    //  - Close the class declaration with }; 
+    // Just remember to:
+    //  - Close the class declaration with };
     //  - Close the namespace with PXR_NAMESPACE_CLOSE_SCOPE
     //  - Close the include guard with #endif
     // ===================================================================== //

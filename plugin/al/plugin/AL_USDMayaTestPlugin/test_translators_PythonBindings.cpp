@@ -13,13 +13,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
+#include "AL/usd/schemas/mayatest/ExamplePolyCubeNode.h"
 #include "test_usdmaya.h"
 
-#include "AL/usd/schemas/mayatest/ExamplePolyCubeNode.h"
+#include <pxr/usd/usd/stage.h>
 
 #include <maya/MFnDagNode.h>
-
-#include <pxr/usd/usd/stage.h>
 
 using namespace AL::usdmaya::fileio::translators;
 using AL::maya::test::buildTempPath;
@@ -32,57 +31,66 @@ using AL::maya::test::buildTempPath;
 // its instantiation looks for a TranslatorTestType TfType
 TEST(translators_PythonBindings, import)
 {
-  auto filepath = buildTempPath("examplepolycube.usda");
-  auto stage = UsdStage::CreateNew(filepath);
-  auto prim = AL_usd_ExamplePolyCubeNode::Define(stage, SdfPath {"/examplecube"});
-  prim.GetWidthAttr().Set(0.5f);
-  prim.GetHeightAttr().Set(1.2f);
-  prim.GetDepthAttr().Set(3.4f);
-  stage->Save();
+    auto filepath = buildTempPath("examplepolycube.usda");
+    auto stage = UsdStage::CreateNew(filepath);
+    auto prim = AL_usd_ExamplePolyCubeNode::Define(stage, SdfPath { "/examplecube" });
+    prim.GetWidthAttr().Set(0.5f);
+    prim.GetHeightAttr().Set(1.2f);
+    prim.GetDepthAttr().Set(3.4f);
+    stage->Save();
 
-  auto pythonscript = MString("\"") + AL_USDMAYA_TEST_DATA +
-                      MString("/../py/examplecubetranslator.py\"");
+    auto pythonscript
+        = MString("'") + AL_USDMAYA_TEST_DATA + MString("/../py/examplecubetranslator.py'");
 
-  auto status = MGlobal::executePythonCommand(
-      MString {"execfile("} + pythonscript + ")\n"
-  );
-  ASSERT_TRUE(status);
+    MString pyExecCmd;
+    pyExecCmd.format(
+        "file = ^1s;\n"
+        "globals = {'__file__': ^1s, '__name__': '__main__'};\n"
+        "exec(compile(open(file, 'rb').read(), file, 'exec'), globals);\n",
+        pythonscript);
 
-  MFnDagNode fnd;
-  auto xform = fnd.create("transform");
-  auto shape = fnd.create("AL_usdmaya_ProxyShape", xform);
-  auto* proxy = (AL::usdmaya::nodes::ProxyShape*)fnd.userNode();
-  // force the stage to load
-  proxy->filePathPlug().setString(filepath);
+    auto status = MGlobal::executePythonCommand(pyExecCmd);
+    ASSERT_TRUE(status);
 
-  status = MGlobal::selectByName("myrender", MGlobal::kReplaceList);
-  ASSERT_TRUE(status);
+    MFnDagNode fnd;
+    auto       xform = fnd.create("transform");
+    auto       shape = fnd.create("AL_usdmaya_ProxyShape", xform);
+    auto*      proxy = (AL::usdmaya::nodes::ProxyShape*)fnd.userNode();
+    // force the stage to load
+    proxy->filePathPlug().setString(filepath);
 
-  MSelectionList sl;
-  MObject obj;
-  MGlobal::getActiveSelectionList(sl);
-  sl.getDependNode(0, obj);
-  MFnDependencyNode renderBoxDep {obj};
-  ASSERT_EQ(renderBoxDep.findPlug("sizeX").asFloat(), 0.5f);
-  ASSERT_EQ(renderBoxDep.findPlug("sizeY").asFloat(), 1.2f);
-  ASSERT_EQ(renderBoxDep.findPlug("sizeZ").asFloat(), 3.4f);
+    status = MGlobal::selectByName("myrender", MGlobal::kReplaceList);
+    ASSERT_TRUE(status);
 
-  TranslatorManufacture::clearPythonTranslators();
+    MSelectionList sl;
+    MObject        obj;
+    MGlobal::getActiveSelectionList(sl);
+    sl.getDependNode(0, obj);
+    MFnDependencyNode renderBoxDep { obj };
+    ASSERT_EQ(renderBoxDep.findPlug("sizeX").asFloat(), 0.5f);
+    ASSERT_EQ(renderBoxDep.findPlug("sizeY").asFloat(), 1.2f);
+    ASSERT_EQ(renderBoxDep.findPlug("sizeZ").asFloat(), 3.4f);
+
+    TranslatorManufacture::clearPythonTranslators();
 }
 
 TEST(translators_PythonBindings, unknownType)
 {
-  auto pythonscript = MString("\"") + AL_USDMAYA_TEST_DATA +
-                      MString("/unknowntypetranslator.py\"");
+    auto pythonscript = MString("'") + AL_USDMAYA_TEST_DATA + MString("/unknowntypetranslator.py'");
 
-  auto status = MGlobal::executePythonCommand(
-      MString {"execfile("} + pythonscript + ")\n"
-  );
-  ASSERT_TRUE(status);
+    MString pyExecCmd;
+    pyExecCmd.format(
+        "file = ^1s;\n"
+        "globals = {'__file__': ^1s, '__name__': '__main__'};\n"
+        "exec(compile(open(file, 'rb').read(), file, 'exec'), globals);\n",
+        pythonscript);
 
-  auto pythonTranslators = TranslatorManufacture::getPythonTranslators();
+    auto status = MGlobal::executePythonCommand(pyExecCmd);
+    ASSERT_TRUE(status);
 
-  ASSERT_EQ(pythonTranslators.size(), 1u);
+    auto pythonTranslators = TranslatorManufacture::getPythonTranslators();
 
-  TranslatorManufacture::clearPythonTranslators();
+    ASSERT_EQ(pythonTranslators.size(), 1u);
+
+    TranslatorManufacture::clearPythonTranslators();
 }

@@ -16,32 +16,34 @@
 #ifndef HDMAYA_SHADOW_MATRIX_H
 #define HDMAYA_SHADOW_MATRIX_H
 
+#include <pxr/base/gf/matrix4d.h>
 #include <pxr/imaging/hdx/shadowMatrixComputation.h>
 #include <pxr/pxr.h>
 
-#include <pxr/base/gf/matrix4d.h>
+#include <boost/shared_ptr.hpp>
 
 #include <vector>
 
-#include <boost/shared_ptr.hpp>
-
 PXR_NAMESPACE_OPEN_SCOPE
 
-class HdMayaConstantShadowMatrix : public HdxShadowMatrixComputation {
+class HdMayaConstantShadowMatrix : public HdxShadowMatrixComputation
+{
 public:
     explicit HdMayaConstantShadowMatrix(const GfMatrix4d& mat)
-        : _shadowMatrix(mat) {}
+        : _shadowMatrix(mat)
+    {
+    }
 
 #if HDX_API_VERSION >= 6
-    inline std::vector<GfMatrix4d> Compute(
-        const GfVec4f& viewport,
-        CameraUtilConformWindowPolicy policy) override {
-        return {_shadowMatrix};
+    inline std::vector<GfMatrix4d>
+    Compute(const GfVec4f& viewport, CameraUtilConformWindowPolicy policy) override
+    {
+        return { _shadowMatrix };
     }
 #else
-    inline GfMatrix4d Compute(
-        const GfVec4f& viewport,
-        CameraUtilConformWindowPolicy policy) override {
+    inline GfMatrix4d
+    Compute(const GfVec4f& viewport, CameraUtilConformWindowPolicy policy) override
+    {
         return _shadowMatrix;
     }
 #endif

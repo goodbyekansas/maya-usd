@@ -16,11 +16,10 @@
 #ifndef HDMAYA_ADAPTER_TOKENS_H
 #define HDMAYA_ADAPTER_TOKENS_H
 
-#include <pxr/pxr.h>
+#include <hdMaya/api.h>
 
 #include <pxr/base/tf/staticTokens.h>
-
-#include "../api.h"
+#include <pxr/pxr.h>
 
 PXR_NAMESPACE_OPEN_SCOPE
 
@@ -30,6 +29,7 @@ PXR_NAMESPACE_OPEN_SCOPE
     (clearcoat)                               \
     (clearcoatRoughness)                      \
     (emissiveColor)                           \
+    (specular)                                \
     (specularColor)                           \
     (metallic)                                \
     (useSpecularWorkflow)                     \
@@ -37,11 +37,23 @@ PXR_NAMESPACE_OPEN_SCOPE
     (ior)                                     \
     (normal)                                  \
     (opacity)                                 \
+    (diffuse)                                 \
     (diffuseColor)                            \
     (displacement)                            \
+    (base)                                    \
+    (baseColor)                               \
+    (emission)                                \
+    (emissionColor)                           \
+    (metalness)                               \
+    (specularIOR)                             \
+    (specularRoughness)                       \
+    (coat)                                    \
+    (coatRoughness)                           \
+    (transmission)                            \
     (lambert)                                 \
     (blinn)                                   \
     (phong)                                   \
+    (standardSurface)                         \
     (file)                                    \
     (place2dTexture)                          \
     (fileTextureName)                         \
@@ -59,11 +71,11 @@ PXR_NAMESPACE_OPEN_SCOPE
     (varname)                                 \
     (result)                                  \
     (eccentricity)                            \
+    (usdPreviewSurface)                       \
     (pxrUsdPreviewSurface)
 // clang-format on
 
-TF_DECLARE_PUBLIC_TOKENS(
-    HdMayaAdapterTokens, HDMAYA_API, HDMAYA_ADAPTER_TOKENS);
+TF_DECLARE_PUBLIC_TOKENS(HdMayaAdapterTokens, HDMAYA_API, HDMAYA_ADAPTER_TOKENS);
 
 PXR_NAMESPACE_CLOSE_SCOPE
 

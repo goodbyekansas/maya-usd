@@ -20,46 +20,25 @@
 
 #include "usdMaya/api.h"
 
-#include "pxr/pxr.h"
+#include <mayaUsd/commands/baseImportCommand.h>
 
-#include <maya/MArgList.h>
-#include <maya/MPxCommand.h>
-#include <maya/MStatus.h>
-#include <maya/MSyntax.h>
-
+#include <pxr/pxr.h>
 
 PXR_NAMESPACE_OPEN_SCOPE
 
-
 class UsdMaya_ReadJobWithSceneAssembly;
 
-class UsdMayaImportCommand : public MPxCommand
+class PxrMayaUSDImportCommand : public MayaUsd::MayaUSDImportCommand
 {
-  public:
-    PXRUSDMAYA_API
-    UsdMayaImportCommand();
-    PXRUSDMAYA_API
-    ~UsdMayaImportCommand() override;
-
-    PXRUSDMAYA_API
-    MStatus doIt(const MArgList& args) override;
-    PXRUSDMAYA_API
-    MStatus redoIt() override;
-    PXRUSDMAYA_API
-    MStatus undoIt() override;
-    bool isUndoable() const override { return true; };
-
-    PXRUSDMAYA_API
-    static MSyntax createSyntax();
+public:
     PXRUSDMAYA_API
     static void* creator();
 
-  private:
-    UsdMaya_ReadJobWithSceneAssembly* mUsdReadJob;
+protected:
+    std::unique_ptr<UsdMaya_ReadJob>
+    initializeReadJob(const MayaUsd::ImportData&, const UsdMayaJobImportArgs&) override;
 };
 
-
 PXR_NAMESPACE_CLOSE_SCOPE
-
 
 #endif

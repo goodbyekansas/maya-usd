@@ -13,29 +13,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-#include "pxr/pxr.h"
 #include "jointWriter.h"
 
-#include "../../fileio/utils/adaptor.h"
-#include "../../fileio/primWriter.h"
-#include "../../fileio/primWriterRegistry.h"
-#include "../../fileio/translators/translatorSkel.h"
-#include "../../fileio/translators/translatorUtil.h"
-#include "../../utils/util.h"
-#include "../../fileio/writeJobContext.h"
+#include <mayaUsd/fileio/primWriter.h>
+#include <mayaUsd/fileio/primWriterRegistry.h>
+#include <mayaUsd/fileio/translators/translatorSkel.h>
+#include <mayaUsd/fileio/translators/translatorUtil.h>
+#include <mayaUsd/fileio/utils/adaptor.h>
+#include <mayaUsd/fileio/utils/jointWriteUtils.h>
+#include <mayaUsd/fileio/utils/writeUtil.h>
+#include <mayaUsd/fileio/writeJobContext.h>
+#include <mayaUsd/utils/util.h>
 
-#include "pxr/base/tf/staticTokens.h"
-#include "pxr/base/tf/token.h"
-#include "pxr/usd/sdf/path.h"
-#include "pxr/usd/usd/timeCode.h"
-#include "pxr/usd/usdGeom/xform.h"
-#include "pxr/usd/usdSkel/animation.h"
-#include "pxr/usd/usdSkel/bindingAPI.h"
-#include "pxr/usd/usdSkel/root.h"
-#include "pxr/usd/usdSkel/skeleton.h"
-#include "pxr/usd/usdSkel/utils.h"
-
-#include "pxr/usd/sdf/pathTable.h"
+#include <pxr/base/tf/staticTokens.h>
+#include <pxr/base/tf/token.h>
+#include <pxr/pxr.h>
+#include <pxr/usd/sdf/path.h>
+#include <pxr/usd/sdf/pathTable.h>
+#include <pxr/usd/usd/timeCode.h>
+#include <pxr/usd/usdGeom/xform.h>
+#include <pxr/usd/usdSkel/animation.h>
+#include <pxr/usd/usdSkel/bindingAPI.h>
+#include <pxr/usd/usdSkel/root.h>
+#include <pxr/usd/usdSkel/skeleton.h>
+#include <pxr/usd/usdSkel/utils.h>
 
 #include <maya/MAnimUtil.h>
 #include <maya/MDagPath.h>
@@ -49,100 +50,30 @@
 
 #include <vector>
 
-
 PXR_NAMESPACE_OPEN_SCOPE
-
 
 PXRUSDMAYA_REGISTER_WRITER(joint, PxrUsdTranslators_JointWriter);
 PXRUSDMAYA_REGISTER_ADAPTOR_SCHEMA(joint, UsdSkelSkeleton);
 
-
-TF_DEFINE_PRIVATE_TOKENS(
-    _tokens,
-    (Animation)
-    (Skeleton)
-);
-
-
-static
-SdfPath
-_GetAnimationPath(const SdfPath& skelPath)
-{
-    return skelPath.AppendChild(_tokens->Animation);
-}
-
-
-/// Gets all of the components of the joint hierarchy rooted at \p dagPath.
-/// The \p skelXformPath will hold the path to a joint that defines
-/// the transform of a UsdSkelSkeleton. It may be invalid if no
-/// joint explicitly defines that transform.
-/// The \p joints array, if provided, will be filled with the ordered set of
-/// joint paths, excluding the set of joints described above.
-/// The \p jointHierarchyRootPath will hold the common parent path of
-/// all of the returned joints.
-static
-void
-_GetJointHierarchyComponents(
-        const MDagPath& dagPath,
-        MDagPath* skelXformPath,
-        MDagPath* jointHierarchyRootPath,
-        std::vector<MDagPath>* joints=nullptr)
-{
-    if(joints)
-        joints->clear();
-    *skelXformPath = MDagPath();
-
-    MItDag dagIter(MItDag::kDepthFirst, MFn::kJoint);
-    dagIter.reset(dagPath, MItDag::kDepthFirst, MFn::kJoint);
-
-    // The first joint may be the root of a Skeleton.
-    if (!dagIter.isDone()) {
-        MDagPath path;
-        dagIter.getPath(path);
-        if (UsdMayaTranslatorSkel::IsUsdSkeleton(path)) {
-            *skelXformPath = path;
-            dagIter.next();
-        }
-    }
-
-    // All remaining joints are treated as normal joints.
-    if (joints) {
-        while (!dagIter.isDone()) {
-            MDagPath path;
-            dagIter.getPath(path);
-            joints->push_back(path);
-            dagIter.next();
-        }
-    }
-
-    if(skelXformPath->isValid()) {
-        *jointHierarchyRootPath = *skelXformPath;
-    } else {
-        *jointHierarchyRootPath = dagPath;
-        jointHierarchyRootPath->pop();
-    }
-}
-
-
 PxrUsdTranslators_JointWriter::PxrUsdTranslators_JointWriter(
-        const MFnDependencyNode& depNodeFn,
-        const SdfPath& usdPath,
-        UsdMayaWriteJobContext& jobCtx) :
-    UsdMayaPrimWriter(depNodeFn, usdPath, jobCtx),
-    _valid(false)
+    const MFnDependencyNode& depNodeFn,
+    const SdfPath&           usdPath,
+    UsdMayaWriteJobContext&  jobCtx)
+    : UsdMayaPrimWriter(depNodeFn, usdPath, jobCtx)
+    , _valid(false)
 {
     if (!TF_VERIFY(GetDagPath().isValid())) {
         return;
     }
 
     const TfToken& exportSkels = _GetExportArgs().exportSkels;
-    if (exportSkels != UsdMayaJobExportArgsTokens->auto_ &&
-            exportSkels != UsdMayaJobExportArgsTokens->explicit_) {
+    if (exportSkels != UsdMayaJobExportArgsTokens->auto_
+        && exportSkels != UsdMayaJobExportArgsTokens->explicit_) {
         return;
     }
 
-    SdfPath skelPath =
-        GetSkeletonPath(GetDagPath(), _GetExportArgs().stripNamespaces);
+    SdfPath skelPath
+        = UsdMayaJointUtil::getSkeletonPath(GetDagPath(), _GetExportArgs().stripNamespaces);
 
     _skel = UsdSkelSkeleton::Define(GetUsdStage(), skelPath);
     if (!TF_VERIFY(_skel)) {
@@ -152,82 +83,27 @@ PxrUsdTranslators_JointWriter::PxrUsdTranslators_JointWriter(
     _usdPrim = _skel.GetPrim();
 }
 
-VtTokenArray
-PxrUsdTranslators_JointWriter::GetJointNames(
-        const std::vector<MDagPath>& joints,
-        const MDagPath& rootDagPath,
-        bool stripNamespaces)
-{
-    MDagPath skelXformPath, jointHierarchyRootPath;
-    _GetJointHierarchyComponents(rootDagPath, &skelXformPath,
-                                 &jointHierarchyRootPath);
-
-    // Get paths relative to the root of the joint hierarchy or the scene root.
-    // Joints have to be transforms, so mergeTransformAndShape
-    // shouldn't matter here. (Besides, we're not actually using these
-    // to point to prims.)
-    SdfPath rootPath;
-    if (jointHierarchyRootPath.length() == 0) {
-        // Joint name relative to the scene root.
-        // Note that, in this case, the export will eventually error when trying
-        // to obtain the SkelRoot. But it's better that we not error here and
-        // only error inside the UsdMaya_SkelBindingsProcessor so that we
-        // consolidate the SkelRoot-related errors in one place.
-        rootPath = SdfPath::AbsoluteRootPath();
-    }
-    else {
-        // Joint name relative to joint root.
-        rootPath = UsdMayaUtil::MDagPathToUsdPath(
-                jointHierarchyRootPath,
-                /*mergeTransformAndShape*/ false,
-                stripNamespaces);
-    }
-
-    VtTokenArray result;
-    for (const MDagPath& joint : joints) {
-
-        SdfPath path = UsdMayaUtil::MDagPathToUsdPath(
-                joint, /*mergeTransformAndShape*/ false, stripNamespaces);
-        result.push_back(path.MakeRelativePath(rootPath).GetToken());
-    }
-    return result;
-}
-
-SdfPath
-PxrUsdTranslators_JointWriter::GetSkeletonPath(
-        const MDagPath& rootJoint,
-        bool stripNamespaces)
-{
-    return UsdMayaUtil::MDagPathToUsdPath(
-        rootJoint, /*mergeTransformAndShape*/ false, stripNamespaces);
-}
-
 /// Whether the transform plugs on a transform node are animated.
-static
-bool
-_IsTransformNodeAnimated(const MDagPath& dagPath)
+static bool _IsTransformNodeAnimated(const MDagPath& dagPath)
 {
     MFnDependencyNode node(dagPath.node());
-    return UsdMayaUtil::isPlugAnimated(node.findPlug("translateX")) ||
-           UsdMayaUtil::isPlugAnimated(node.findPlug("translateY")) ||
-           UsdMayaUtil::isPlugAnimated(node.findPlug("translateZ")) ||
-           UsdMayaUtil::isPlugAnimated(node.findPlug("rotateX")) ||
-           UsdMayaUtil::isPlugAnimated(node.findPlug("rotateY")) ||
-           UsdMayaUtil::isPlugAnimated(node.findPlug("rotateZ")) ||
-           UsdMayaUtil::isPlugAnimated(node.findPlug("scaleX")) ||
-           UsdMayaUtil::isPlugAnimated(node.findPlug("scaleY")) ||
-           UsdMayaUtil::isPlugAnimated(node.findPlug("scaleZ"));
+    return UsdMayaUtil::isPlugAnimated(node.findPlug("translateX"))
+        || UsdMayaUtil::isPlugAnimated(node.findPlug("translateY"))
+        || UsdMayaUtil::isPlugAnimated(node.findPlug("translateZ"))
+        || UsdMayaUtil::isPlugAnimated(node.findPlug("rotateX"))
+        || UsdMayaUtil::isPlugAnimated(node.findPlug("rotateY"))
+        || UsdMayaUtil::isPlugAnimated(node.findPlug("rotateZ"))
+        || UsdMayaUtil::isPlugAnimated(node.findPlug("scaleX"))
+        || UsdMayaUtil::isPlugAnimated(node.findPlug("scaleY"))
+        || UsdMayaUtil::isPlugAnimated(node.findPlug("scaleZ"));
 }
 
 /// Gets the world-space rest transform for a single dag path.
-static
-GfMatrix4d
-_GetJointWorldBindTransform(const MDagPath& dagPath)
+static GfMatrix4d _GetJointWorldBindTransform(const MDagPath& dagPath)
 {
     MFnDagNode dagNode(dagPath);
-    MMatrix restTransformWorld;
-    if (UsdMayaUtil::getPlugMatrix(
-            dagNode, "bindPose", &restTransformWorld)) {
+    MMatrix    restTransformWorld;
+    if (UsdMayaUtil::getPlugMatrix(dagNode, "bindPose", &restTransformWorld)) {
         return GfMatrix4d(restTransformWorld.matrix);
     }
     // No bindPose. Assume it's identity.
@@ -235,13 +111,11 @@ _GetJointWorldBindTransform(const MDagPath& dagPath)
 }
 
 /// Gets world-space bind transforms for all specified dag paths.
-static
-VtMatrix4dArray
-_GetJointWorldBindTransforms(
-        const UsdSkelTopology& topology,
-        const std::vector<MDagPath>& jointDagPaths)
+static VtMatrix4dArray _GetJointWorldBindTransforms(
+    const UsdSkelTopology&       topology,
+    const std::vector<MDagPath>& jointDagPaths)
 {
-    size_t numJoints = jointDagPaths.size();
+    size_t          numJoints = jointDagPaths.size();
     VtMatrix4dArray worldXforms(numJoints);
     for (size_t i = 0; i < jointDagPaths.size(); ++i) {
         worldXforms[i] = _GetJointWorldBindTransform(jointDagPaths[i]);
@@ -250,9 +124,7 @@ _GetJointWorldBindTransforms(
 }
 
 /// Find a dagPose that holds a bind pose for \p dagPath.
-static
-MObject
-_FindBindPose(const MDagPath& dagPath)
+static MObject _FindBindPose(const MDagPath& dagPath)
 {
     MStatus status;
 
@@ -273,7 +145,7 @@ _FindBindPose(const MDagPath& dagPath)
             // or not they represent a bind pose.
 
             MFnDependencyNode poseDep(outputNode, &status);
-            MPlug bindPosePlug = poseDep.findPlug("bindPose", &status);
+            MPlug             bindPosePlug = poseDep.findPlug("bindPose", &status);
             if (status) {
                 if (bindPosePlug.asBool()) {
                     return outputNode;
@@ -289,36 +161,28 @@ _FindBindPose(const MDagPath& dagPath)
 /// Get the member indices of all objects in \p dagPaths within the
 /// members array plug of a dagPose.
 /// Returns true only if all \p dagPaths can be mapped to a dagPose member.
-static
-bool
-_FindDagPoseMembers(
-        const MFnDependencyNode& dagPoseDep,
-        const std::vector<MDagPath>& dagPaths,
-        std::vector<unsigned int>* indices)
+static bool _FindDagPoseMembers(
+    const MFnDependencyNode&     dagPoseDep,
+    const std::vector<MDagPath>& dagPaths,
+    std::vector<unsigned int>*   indices)
 {
     MStatus status;
-    MPlug membersPlug = dagPoseDep.findPlug("members", &status);
+    MPlug   membersPlug = dagPoseDep.findPlug("members", false, &status);
     CHECK_MSTATUS_AND_RETURN(status, false);
 
     // Build a map of dagPath->index.
-
-    struct _HashObjectHandle {
-        std::size_t operator()(const MObjectHandle& o) const {
-            return o.hashCode();
-        }
-    };
-
-    std::unordered_map<MObjectHandle,size_t,_HashObjectHandle> pathIndexMap;
+    UsdMayaUtil::MObjectHandleUnorderedMap<size_t> pathIndexMap;
     for (size_t i = 0; i < dagPaths.size(); ++i) {
         pathIndexMap[MObjectHandle(dagPaths[i].node())] = i;
     }
 
     MPlugArray inputs;
 
+    size_t numDagPaths = dagPaths.size();
     indices->clear();
-    indices->resize(std::min(membersPlug.numElements(),
-                             static_cast<unsigned int>(dagPaths.size())), -1);
+    indices->resize(numDagPaths);
 
+    std::vector<uint8_t> visitedIndices(numDagPaths, 0);
     for (unsigned int i = 0; i < membersPlug.numElements(); ++i) {
 
         MPlug memberPlug = membersPlug[i];
@@ -326,31 +190,33 @@ _FindDagPoseMembers(
 
         for (unsigned int j = 0; j < inputs.length(); ++j) {
             MObjectHandle connNode(inputs[j].node());
-            auto it = pathIndexMap.find(connNode);
+            auto          it = pathIndexMap.find(connNode);
             if (it != pathIndexMap.end()) {
                 (*indices)[it->second] = i;
+                visitedIndices[it->second] = 1;
             }
         }
     }
 
     // Validate that all of the input dagPaths are members.
-    for (size_t i = 0; i < indices->size(); ++i) {
-        int index = (*indices)[i];
-        if (index < 0) {
-            TF_WARN("Node '%s' is not a member of dagPose '%s'.",
-                    MFnDependencyNode(dagPaths[i].node()).name().asChar(),
-                    dagPoseDep.name().asChar());
+    for (size_t i = 0; i < visitedIndices.size(); ++i) {
+        uint8_t visited = visitedIndices[i];
+        if (visited != 1) {
+            unsigned int index = (*indices)[i];
+            TF_WARN(
+                "Node '%s' is not a member of dagPose '%s'.",
+                MFnDependencyNode(dagPaths[index].node()).name().asChar(),
+                dagPoseDep.name().asChar());
             return false;
         }
     }
     return true;
 }
 
-bool
-_GetLocalTransformForDagPoseMember(
-        const MFnDependencyNode& dagPoseDep,
-        unsigned int index,
-        GfMatrix4d* xform)
+bool _GetLocalTransformForDagPoseMember(
+    const MFnDependencyNode& dagPoseDep,
+    unsigned int             index,
+    GfMatrix4d*              xform)
 {
     MStatus status;
 
@@ -372,24 +238,24 @@ _GetLocalTransformForDagPoseMember(
 
 /// Get local-space bind transforms to use as rest transforms.
 /// The dagPose is expected to hold the local transforms.
-static
-bool
-_GetJointLocalRestTransformsFromDagPose(
-        const SdfPath& skelPath,
-        const MDagPath& rootJoint,
-        const std::vector<MDagPath>& jointDagPaths,
-        VtMatrix4dArray* xforms)
+static bool _GetJointLocalRestTransformsFromDagPose(
+    const SdfPath&               skelPath,
+    const MDagPath&              rootJoint,
+    const std::vector<MDagPath>& jointDagPaths,
+    VtMatrix4dArray*             xforms)
 {
     // Use whatever bindPose the root joint is a member of.
     MObject bindPose = _FindBindPose(rootJoint);
     if (bindPose.isNull()) {
-        TF_WARN("%s -- Could not find a dagPose node holding a bind pose: "
-                "The Skeleton's 'restTransforms' property will not be "
-                "authored.", skelPath.GetText());
+        TF_WARN(
+            "%s -- Could not find a dagPose node holding a bind pose: "
+            "The Skeleton's 'restTransforms' property will not be "
+            "authored.",
+            skelPath.GetText());
         return false;
     }
 
-    MStatus status;
+    MStatus           status;
     MFnDependencyNode bindPoseDep(bindPose, &status);
     CHECK_MSTATUS_AND_RETURN(status, false);
 
@@ -401,12 +267,14 @@ _GetJointLocalRestTransformsFromDagPose(
     xforms->resize(jointDagPaths.size());
     for (size_t i = 0; i < xforms->size(); ++i) {
         if (!_GetLocalTransformForDagPoseMember(
-                bindPoseDep, memberIndices[i], xforms->data()+i)) {
-            TF_WARN("%s -- Failed retrieving the local transform of joint '%s' "
-                    "from dagPose '%s': The Skeleton's 'restTransforms' "
-                    "property will not be authored.", skelPath.GetText(),
-                    jointDagPaths[i].fullPathName().asChar(),
-                    bindPoseDep.name().asChar());
+                bindPoseDep, memberIndices[i], xforms->data() + i)) {
+            TF_WARN(
+                "%s -- Failed retrieving the local transform of joint '%s' "
+                "from dagPose '%s': The Skeleton's 'restTransforms' "
+                "property will not be authored.",
+                skelPath.GetText(),
+                jointDagPaths[i].fullPathName().asChar(),
+                bindPoseDep.name().asChar());
             return false;
         }
     }
@@ -414,9 +282,7 @@ _GetJointLocalRestTransformsFromDagPose(
 }
 
 /// Gets the world-space transform of \p dagPath at the current time.
-static
-GfMatrix4d
-_GetJointWorldTransform(const MDagPath& dagPath)
+static GfMatrix4d _GetJointWorldTransform(const MDagPath& dagPath)
 {
     // Don't use Maya's built-in getTranslation(), etc. when extracting the
     // transform because:
@@ -438,11 +304,9 @@ _GetJointWorldTransform(const MDagPath& dagPath)
 }
 
 /// Gets the world-space transform of \p dagPath at the current time.
-static
-GfMatrix4d
-_GetJointLocalTransform(const MDagPath& dagPath)
+static GfMatrix4d _GetJointLocalTransform(const MDagPath& dagPath)
 {
-    MStatus status;
+    MStatus      status;
     MFnTransform xform(dagPath, &status);
     if (status) {
         MTransformationMatrix mx = xform.transformation(&status);
@@ -455,11 +319,7 @@ _GetJointLocalTransform(const MDagPath& dagPath)
 
 /// Computes world-space joint transforms for all specified dag paths
 /// at the current time.
-static
-bool
-_GetJointWorldTransforms(
-        const std::vector<MDagPath>& dagPaths,
-        VtMatrix4dArray* xforms)
+static bool _GetJointWorldTransforms(const std::vector<MDagPath>& dagPaths, VtMatrix4dArray* xforms)
 {
     xforms->resize(dagPaths.size());
     GfMatrix4d* xformsData = xforms->data();
@@ -471,13 +331,11 @@ _GetJointWorldTransforms(
 
 /// Computes joint-local transforms for all specified dag paths
 /// at the current time.
-static
-bool
-_GetJointLocalTransforms(
-        const UsdSkelTopology& topology,
-        const std::vector<MDagPath>& dagPaths,
-        const GfMatrix4d& rootXf,
-        VtMatrix4dArray* localXforms)
+static bool _GetJointLocalTransforms(
+    const UsdSkelTopology&       topology,
+    const std::vector<MDagPath>& dagPaths,
+    const GfMatrix4d&            rootXf,
+    VtMatrix4dArray*             localXforms)
 {
     VtMatrix4dArray worldXforms;
     if (_GetJointWorldTransforms(dagPaths, &worldXforms)) {
@@ -488,23 +346,20 @@ _GetJointLocalTransforms(
         for (auto& xf : worldInvXforms)
             xf = xf.GetInverse();
 
-        return UsdSkelComputeJointLocalTransforms(topology, worldXforms,
-                                                  worldInvXforms,
-                                                  localXforms, &rootInvXf);
+        return UsdSkelComputeJointLocalTransforms(
+            topology, worldXforms, worldInvXforms, localXforms, &rootInvXf);
     }
     return true;
 }
 
 /// Returns true if the joint's transform definitely matches its rest transform
 /// over all exported frames.
-static
-bool
-_JointMatchesRestPose(
-        size_t jointIdx,
-        const MDagPath& dagPath,
-        const VtMatrix4dArray& xforms,
-        const VtMatrix4dArray& restXforms,
-        bool exportingAnimation)
+static bool _JointMatchesRestPose(
+    size_t                 jointIdx,
+    const MDagPath&        dagPath,
+    const VtMatrix4dArray& xforms,
+    const VtMatrix4dArray& restXforms,
+    bool                   exportingAnimation)
 {
     if (exportingAnimation && _IsTransformNodeAnimated(dagPath))
         return false;
@@ -516,17 +371,15 @@ _JointMatchesRestPose(
 /// Given the list of USD joint names and dag paths, returns the joints that
 /// (1) are moved from their rest poses or (2) have animation, if we are going
 /// to export animation.
-static
-void
-_GetAnimatedJoints(
-        const UsdSkelTopology& topology,
-        const VtTokenArray& usdJointNames,
-        const MDagPath& rootDagPath,
-        const std::vector<MDagPath>& jointDagPaths,
-        const VtMatrix4dArray& restXforms,
-        VtTokenArray* animatedJointNames,
-        std::vector<MDagPath>* animatedJointPaths,
-        bool exportingAnimation)
+static void _GetAnimatedJoints(
+    const UsdSkelTopology&       topology,
+    const VtTokenArray&          usdJointNames,
+    const MDagPath&              rootDagPath,
+    const std::vector<MDagPath>& jointDagPaths,
+    const VtMatrix4dArray&       restXforms,
+    VtTokenArray*                animatedJointNames,
+    std::vector<MDagPath>*       animatedJointPaths,
+    bool                         exportingAnimation)
 {
     if (!TF_VERIFY(usdJointNames.size() == jointDagPaths.size())) {
         return;
@@ -546,32 +399,29 @@ _GetAnimatedJoints(
         // Compute the current local xforms of all joints so we can decide
         // whether or not they need to have a value encoded on the anim prim.
         GfMatrix4d rootXform = _GetJointWorldTransform(rootDagPath);
-        _GetJointLocalTransforms(topology, jointDagPaths,
-                                 rootXform, &localXforms);
+        _GetJointLocalTransforms(topology, jointDagPaths, rootXform, &localXforms);
     }
 
     // The resulting vector contains only animated joints or joints not
     // in their rest pose. The order is *not* guaranteed to be the Skeleton
     // order, because UsdSkel allows arbitrary order on SkelAnimation.
     for (size_t i = 0; i < jointDagPaths.size(); ++i) {
-        const TfToken& jointName = usdJointNames[i];
+        const TfToken&  jointName = usdJointNames[i];
         const MDagPath& dagPath = jointDagPaths[i];
 
-        if (!_JointMatchesRestPose(i, jointDagPaths[i], localXforms,
-                                   restXforms, exportingAnimation)) {
+        if (!_JointMatchesRestPose(
+                i, jointDagPaths[i], localXforms, restXforms, exportingAnimation)) {
             animatedJointNames->push_back(jointName);
             animatedJointPaths->push_back(dagPath);
         }
     }
 }
 
-bool
-PxrUsdTranslators_JointWriter::_WriteRestState()
+bool PxrUsdTranslators_JointWriter::_WriteRestState()
 {
     // Check if the root joint is the special root joint created
     // for round-tripping UsdSkel data.
-    bool haveUsdSkelXform =
-        UsdMayaTranslatorSkel::IsUsdSkeleton(GetDagPath());
+    bool haveUsdSkelXform = UsdMayaTranslatorSkel::IsUsdSkeleton(GetDagPath());
 
     if (!haveUsdSkelXform) {
         // We don't have a joint that represents the Skeleton.
@@ -581,51 +431,55 @@ PxrUsdTranslators_JointWriter::_WriteRestState()
         UsdMayaTranslatorSkel::MarkSkelAsMayaGenerated(_skel);
     }
 
-    _GetJointHierarchyComponents(GetDagPath(),
-                                 &_skelXformPath,
-                                 &_jointHierarchyRootPath,
-                                 &_joints);
+    UsdMayaJointUtil::getJointHierarchyComponents(
+        GetDagPath(), &_skelXformPath, &_jointHierarchyRootPath, &_joints);
 
-    VtTokenArray skelJointNames =
-        GetJointNames(_joints, GetDagPath(),
-                      _GetExportArgs().stripNamespaces);
+    VtTokenArray skelJointNames
+        = UsdMayaJointUtil::getJointNames(_joints, GetDagPath(), _GetExportArgs().stripNamespaces);
     _topology = UsdSkelTopology(skelJointNames);
     std::string whyNotValid;
     if (!_topology.Validate(&whyNotValid)) {
-        TF_CODING_ERROR("Joint topology is invalid: %s",
-                        whyNotValid.c_str());
+        TF_CODING_ERROR("Joint topology is invalid: %s", whyNotValid.c_str());
         return false;
     }
 
     // Setup binding relationships on the instance prim,
     // so that the root xform establishes a skeleton instance
     // with the right transform.
-    const UsdSkelBindingAPI binding = UsdMayaTranslatorUtil
-        ::GetAPISchemaForAuthoring<UsdSkelBindingAPI>(_skel.GetPrim());
+    const UsdSkelBindingAPI binding
+        = UsdMayaTranslatorUtil ::GetAPISchemaForAuthoring<UsdSkelBindingAPI>(_skel.GetPrim());
 
     // Mark the bindings for post processing.
 
-    _SetAttribute(_skel.GetJointsAttr(), skelJointNames);
+    UsdMayaWriteUtil::SetAttribute(
+        _skel.GetJointsAttr(), skelJointNames, UsdTimeCode::Default(), _GetSparseValueWriter());
 
     SdfPath skelPath = _skel.GetPrim().GetPath();
-    _writeJobCtx.MarkSkelBindings(
-        skelPath, skelPath, _GetExportArgs().exportSkels);
+    _writeJobCtx.MarkSkelBindings(skelPath, skelPath, _GetExportArgs().exportSkels);
 
-    VtMatrix4dArray bindXforms =
-        _GetJointWorldBindTransforms(_topology, _joints);
-    _SetAttribute(_skel.GetBindTransformsAttr(), bindXforms);
+    VtMatrix4dArray bindXforms = _GetJointWorldBindTransforms(_topology, _joints);
+    UsdMayaWriteUtil::SetAttribute(
+        _skel.GetBindTransformsAttr(), bindXforms, UsdTimeCode::Default(), _GetSparseValueWriter());
 
     VtMatrix4dArray restXforms;
-    if (_GetJointLocalRestTransformsFromDagPose(
-            skelPath, GetDagPath(), _joints, &restXforms)) {
-        _SetAttribute(_skel.GetRestTransformsAttr(), restXforms);
+    if (_GetJointLocalRestTransformsFromDagPose(skelPath, GetDagPath(), _joints, &restXforms)) {
+        UsdMayaWriteUtil::SetAttribute(
+            _skel.GetRestTransformsAttr(),
+            restXforms,
+            UsdTimeCode::Default(),
+            _GetSparseValueWriter());
     }
 
     VtTokenArray animJointNames;
-    _GetAnimatedJoints(_topology, skelJointNames, GetDagPath(),
-                       _joints, restXforms,
-                       &animJointNames, &_animatedJoints,
-                       !_GetExportArgs().timeSamples.empty());
+    _GetAnimatedJoints(
+        _topology,
+        skelJointNames,
+        GetDagPath(),
+        _joints,
+        restXforms,
+        &animJointNames,
+        &_animatedJoints,
+        !_GetExportArgs().timeSamples.empty());
 
     if (haveUsdSkelXform) {
         _skelXformAttr = _skel.MakeMatrixXform();
@@ -639,16 +493,19 @@ PxrUsdTranslators_JointWriter::_WriteRestState()
 
     if (!animJointNames.empty()) {
 
-        SdfPath animPath = _GetAnimationPath(skelPath);
+        SdfPath animPath = UsdMayaJointUtil::getAnimationPath(skelPath);
         _skelAnim = UsdSkelAnimation::Define(GetUsdStage(), animPath);
 
         if (TF_VERIFY(_skelAnim)) {
-            _skelToAnimMapper =
-                UsdSkelAnimMapper(skelJointNames, animJointNames);
+            _skelToAnimMapper = UsdSkelAnimMapper(skelJointNames, animJointNames);
 
-            _SetAttribute(_skelAnim.GetJointsAttr(), animJointNames);
+            UsdMayaWriteUtil::SetAttribute(
+                _skelAnim.GetJointsAttr(),
+                animJointNames,
+                UsdTimeCode::Default(),
+                _GetSparseValueWriter());
 
-            binding.CreateAnimationSourceRel().SetTargets({animPath});
+            binding.CreateAnimationSourceRel().SetTargets({ animPath });
         } else {
             return false;
         }
@@ -657,8 +514,7 @@ PxrUsdTranslators_JointWriter::_WriteRestState()
 }
 
 /* virtual */
-void
-PxrUsdTranslators_JointWriter::Write(const UsdTimeCode& usdTime)
+void PxrUsdTranslators_JointWriter::Write(const UsdTimeCode& usdTime)
 {
     if (usdTime.IsDefault()) {
         _valid = _WriteRestState();
@@ -673,7 +529,7 @@ PxrUsdTranslators_JointWriter::Write(const UsdTimeCode& usdTime)
         // We have a joint which provides the transform of the Skeleton,
         // instead of the transform of a joint in the hierarchy.
         GfMatrix4d localXf = _GetJointLocalTransform(_skelXformPath);
-        _SetAttribute(_skelXformAttr, localXf, usdTime);
+        UsdMayaWriteUtil::SetAttribute(_skelXformAttr, localXf, usdTime, _GetSparseValueWriter());
     }
 
     // Time-varying step: write the packed joint animation transforms once per
@@ -684,7 +540,7 @@ PxrUsdTranslators_JointWriter::Write(const UsdTimeCode& usdTime)
 
         if (!_skelAnim) {
 
-            SdfPath animPath = _GetAnimationPath(_skel.GetPrim().GetPath());
+            SdfPath animPath = UsdMayaJointUtil::getAnimationPath(_skel.GetPrim().GetPath());
 
             TF_CODING_ERROR(
                 "SkelAnimation <%s> doesn't exist but should "
@@ -696,8 +552,7 @@ PxrUsdTranslators_JointWriter::Write(const UsdTimeCode& usdTime)
         GfMatrix4d rootXf = _GetJointWorldTransform(_jointHierarchyRootPath);
 
         VtMatrix4dArray localXforms;
-        if (_GetJointLocalTransforms(_topology, _joints,
-                                     rootXf, &localXforms)) {
+        if (_GetJointLocalTransforms(_topology, _joints, rootXf, &localXforms)) {
 
             // Remap local xforms into the (possibly sparse) anim order.
             VtMatrix4dArray animLocalXforms;
@@ -706,20 +561,23 @@ PxrUsdTranslators_JointWriter::Write(const UsdTimeCode& usdTime)
                 VtVec3fArray translations;
                 VtQuatfArray rotations;
                 VtVec3hArray scales;
-                if (UsdSkelDecomposeTransforms(animLocalXforms, &translations,
-                                               &rotations, &scales)) {
+                if (UsdSkelDecomposeTransforms(
+                        animLocalXforms, &translations, &rotations, &scales)) {
 
                     // XXX It is difficult for us to tell which components are
                     // actually animated since we rely on decomposition to get
                     // separate anim components.
                     // In the future, we may want to RLE-compress the data in
                     // PostExport to remove redundant time samples.
-                    _SetAttribute(_skelAnim.GetTranslationsAttr(),
-                                  &translations, usdTime);
-                    _SetAttribute(_skelAnim.GetRotationsAttr(),
-                                  &rotations, usdTime);
-                    _SetAttribute(_skelAnim.GetScalesAttr(),
-                                  &scales, usdTime);
+                    UsdMayaWriteUtil::SetAttribute(
+                        _skelAnim.GetTranslationsAttr(),
+                        &translations,
+                        usdTime,
+                        _GetSparseValueWriter());
+                    UsdMayaWriteUtil::SetAttribute(
+                        _skelAnim.GetRotationsAttr(), &rotations, usdTime, _GetSparseValueWriter());
+                    UsdMayaWriteUtil::SetAttribute(
+                        _skelAnim.GetScalesAttr(), &scales, usdTime, _GetSparseValueWriter());
                 }
             }
         }
@@ -727,19 +585,13 @@ PxrUsdTranslators_JointWriter::Write(const UsdTimeCode& usdTime)
 }
 
 /* virtual */
-bool
-PxrUsdTranslators_JointWriter::ExportsGprims() const
+bool PxrUsdTranslators_JointWriter::ExportsGprims() const
 {
     // Nether the Skeleton nor its animation sources are gprims.
     return false;
 }
 
 /* virtual */
-bool
-PxrUsdTranslators_JointWriter::ShouldPruneChildren() const
-{
-    return true;
-}
-
+bool PxrUsdTranslators_JointWriter::ShouldPruneChildren() const { return true; }
 
 PXR_NAMESPACE_CLOSE_SCOPE

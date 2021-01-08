@@ -19,8 +19,8 @@
 import maya.api.OpenMaya as om
 import maya.cmds as cmds
 
-from ufeTestUtils import usdUtils, mayaUtils, ufeUtils
-from ufeTestUtils.testUtils import assertVectorAlmostEqual
+import usdUtils, mayaUtils, ufeUtils
+from testUtils import assertVectorAlmostEqual
 import ufe
 
 import unittest
@@ -97,7 +97,7 @@ class Transform3dTranslateTestCase(unittest.TestCase):
         # interface.
         self.setRunTimeTranslation = None
 
-        # Open top_layer.ma scene in test-samples
+        # Open top_layer.ma scene in testSamples
         mayaUtils.openTopLayerScene()
         
         # Create some extra Maya nodes
@@ -158,7 +158,7 @@ class Transform3dTranslateTestCase(unittest.TestCase):
 
         # Select Ball_35 to move it.
         ball35Path = ufe.Path([
-            mayaUtils.createUfePathSegment("|world|transform1|proxyShape1"), 
+            mayaUtils.createUfePathSegment("|transform1|proxyShape1"), 
             usdUtils.createUfePathSegment("/Room_set/Props/Ball_35")])
         ball35Item = ufe.Hierarchy.createItem(ball35Path)
 
@@ -199,7 +199,7 @@ class Transform3dTranslateTestCase(unittest.TestCase):
 
         # Select Ball_35 to move it.
         ball35Path = ufe.Path([
-            mayaUtils.createUfePathSegment("|world|transform1|proxyShape1"), 
+            mayaUtils.createUfePathSegment("|transform1|proxyShape1"), 
             usdUtils.createUfePathSegment("/Room_set/Props/Ball_35")])
         ball35Item = ufe.Hierarchy.createItem(ball35Path)
 
@@ -234,8 +234,4 @@ class Transform3dTranslateTestCase(unittest.TestCase):
             Gf.Vec3d(10, 20, 30))
 
         # Notified.
-        # USD Attribute Notification doubling problem:
-        # Note: because we are using set on the usd attribute (just above)
-        #       directly we we receive TWO notifs in our transform3d observer.
-        #       See UsdAttribute.cpp function setUsdAttr() for details.
-        self.assertEqual(t3dObs.notifications(), 2)
+        self.assertEqual(t3dObs.notifications(), 1)

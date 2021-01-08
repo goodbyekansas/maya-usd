@@ -13,16 +13,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-#include "MayaReference.h"
-#include "pxr/usd/usd/schemaBase.h"
+#include <mayaUsd_Schemas/MayaReference.h>
 
-#include "pxr/usd/sdf/primSpec.h"
-
-#include "pxr/usd/usd/pyConversions.h"
-#include "pxr/base/tf/pyContainerConversions.h"
-#include "pxr/base/tf/pyResultConversions.h"
-#include "pxr/base/tf/pyUtils.h"
-#include "pxr/base/tf/wrapTypeHelpers.h"
+#include <pxr/base/tf/pyContainerConversions.h>
+#include <pxr/base/tf/pyResultConversions.h>
+#include <pxr/base/tf/pyUtils.h>
+#include <pxr/base/tf/wrapTypeHelpers.h>
+#include <pxr/usd/sdf/primSpec.h>
+#include <pxr/usd/usd/pyConversions.h>
+#include <pxr/usd/usd/schemaBase.h>
 
 #include <boost/python.hpp>
 
@@ -34,23 +33,21 @@ PXR_NAMESPACE_USING_DIRECTIVE
 
 namespace {
 
-#define WRAP_CUSTOM                                                     \
-    template <class Cls> static void _CustomWrapCode(Cls &_class)
+#define WRAP_CUSTOM template <class Cls> static void _CustomWrapCode(Cls& _class)
 
 // fwd decl.
 WRAP_CUSTOM;
 
-        
 static UsdAttribute
-_CreateMayaReferenceAttr(MayaUsd_SchemasMayaReference &self,
-                                      object defaultVal, bool writeSparsely) {
+_CreateMayaReferenceAttr(MayaUsd_SchemasMayaReference& self, object defaultVal, bool writeSparsely)
+{
     return self.CreateMayaReferenceAttr(
         UsdPythonToSdfType(defaultVal, SdfValueTypeNames->Asset), writeSparsely);
 }
-        
+
 static UsdAttribute
-_CreateMayaNamespaceAttr(MayaUsd_SchemasMayaReference &self,
-                                      object defaultVal, bool writeSparsely) {
+_CreateMayaNamespaceAttr(MayaUsd_SchemasMayaReference& self, object defaultVal, bool writeSparsely)
+{
     return self.CreateMayaNamespaceAttr(
         UsdPythonToSdfType(defaultVal, SdfValueTypeNames->String), writeSparsely);
 }
@@ -61,11 +58,9 @@ void wrapMayaUsd_SchemasMayaReference()
 {
     typedef MayaUsd_SchemasMayaReference This;
 
-    class_<This, bases<UsdGeomXformable> >
-        cls("MayaReference");
+    class_<This, bases<UsdGeomXformable>> cls("MayaReference");
 
-    cls
-        .def(init<UsdPrim>(arg("prim")))
+    cls.def(init<UsdPrim>(arg("prim")))
         .def(init<UsdSchemaBase const&>(arg("schemaObj")))
         .def(TfTypePythonClass())
 
@@ -75,40 +70,40 @@ void wrapMayaUsd_SchemasMayaReference()
         .def("Define", &This::Define, (arg("stage"), arg("path")))
         .staticmethod("Define")
 
-        .def("GetSchemaAttributeNames",
-             &This::GetSchemaAttributeNames,
-             arg("includeInherited")=true,
-             return_value_policy<TfPySequenceToList>())
+        .def(
+            "GetSchemaAttributeNames",
+            &This::GetSchemaAttributeNames,
+            arg("includeInherited") = true,
+            return_value_policy<TfPySequenceToList>())
         .staticmethod("GetSchemaAttributeNames")
 
-        .def("_GetStaticTfType", (TfType const &(*)()) TfType::Find<This>,
-             return_value_policy<return_by_value>())
+        .def(
+            "_GetStaticTfType",
+            (TfType const& (*)())TfType::Find<This>,
+            return_value_policy<return_by_value>())
         .staticmethod("_GetStaticTfType")
 
         .def(!self)
 
-        
-        .def("GetMayaReferenceAttr",
-             &This::GetMayaReferenceAttr)
-        .def("CreateMayaReferenceAttr",
-             &_CreateMayaReferenceAttr,
-             (arg("defaultValue")=object(),
-              arg("writeSparsely")=false))
-        
-        .def("GetMayaNamespaceAttr",
-             &This::GetMayaNamespaceAttr)
-        .def("CreateMayaNamespaceAttr",
-             &_CreateMayaNamespaceAttr,
-             (arg("defaultValue")=object(),
-              arg("writeSparsely")=false))
+        .def("GetMayaReferenceAttr", &This::GetMayaReferenceAttr)
+        .def(
+            "CreateMayaReferenceAttr",
+            &_CreateMayaReferenceAttr,
+            (arg("defaultValue") = object(), arg("writeSparsely") = false))
 
-    ;
+        .def("GetMayaNamespaceAttr", &This::GetMayaNamespaceAttr)
+        .def(
+            "CreateMayaNamespaceAttr",
+            &_CreateMayaNamespaceAttr,
+            (arg("defaultValue") = object(), arg("writeSparsely") = false))
+
+        ;
 
     _CustomWrapCode(cls);
 }
 
 // ===================================================================== //
-// Feel free to add custom code below this line, it will be preserved by 
+// Feel free to add custom code below this line, it will be preserved by
 // the code generator.  The entry point for your custom code should look
 // minimally like the following:
 //
@@ -119,7 +114,7 @@ void wrapMayaUsd_SchemasMayaReference()
 // }
 //
 // Of course any other ancillary or support code may be provided.
-// 
+//
 // Just remember to wrap code in the appropriate delimiters:
 // 'namespace {', '}'.
 //
@@ -128,7 +123,6 @@ void wrapMayaUsd_SchemasMayaReference()
 
 namespace {
 
-WRAP_CUSTOM {
-}
+WRAP_CUSTOM { }
 
-}
+} // namespace

@@ -1,2 +1,5 @@
+add_subdirectory(plugin)
+add_subdirectory(pxrUsdPreviewSurface)
 add_subdirectory(schemas)
 add_subdirectory(utils)
+add_subdirectory(translators)

@@ -15,15 +15,14 @@
 //
 #include "delegateCtx.h"
 
+#include "mayaUsd/utils/util.h"
+
 #include <pxr/base/gf/frustum.h>
 #include <pxr/base/gf/plane.h>
 #include <pxr/base/gf/range1d.h>
-
 #include <pxr/imaging/hd/renderDelegate.h>
 #include <pxr/imaging/hd/rprim.h>
 #include <pxr/imaging/hio/glslfx.h>
-
-#include "../../../utils/util.h"
 
 #include <maya/MFnLight.h>
 
@@ -33,22 +32,34 @@ PXR_NAMESPACE_OPEN_SCOPE
 
 namespace {
 
-SdfPath _GetPrimPath(const SdfPath& base, const MDagPath& dg) {
+SdfPath _GetPrimPath(const SdfPath& base, const MDagPath& dg)
+{
     const auto mayaPath = UsdMayaUtil::MDagPathToUsdPath(dg, false, false);
-    if (mayaPath.IsEmpty()) { return {}; }
+    if (mayaPath.IsEmpty()) {
+        return {};
+    }
     const auto* chr = mayaPath.GetText();
-    if (chr == nullptr) { return {}; };
+    if (chr == nullptr) {
+        return {};
+    };
     std::string s(chr + 1);
-    if (s.empty()) { return {}; }
+    if (s.empty()) {
+        return {};
+    }
     return base.AppendPath(SdfPath(s));
 }
 
-SdfPath _GetMaterialPath(const SdfPath& base, const MObject& obj) {
-    MStatus status;
+SdfPath _GetMaterialPath(const SdfPath& base, const MObject& obj)
+{
+    MStatus           status;
     MFnDependencyNode node(obj, &status);
-    if (!status) { return {}; }
+    if (!status) {
+        return {};
+    }
     const auto* chr = node.name().asChar();
-    if (chr == nullptr || chr[0] == '\0') { return {}; }
+    if (chr == nullptr || chr[0] == '\0') {
+        return {};
+    }
     std::string usdPathStr(chr);
     // replace namespace ":" with "_"
     std::replace(usdPathStr.begin(), usdPathStr.end(), ':', '_');
@@ -58,47 +69,50 @@ SdfPath _GetMaterialPath(const SdfPath& base, const MObject& obj) {
 } // namespace
 
 HdMayaDelegateCtx::HdMayaDelegateCtx(const InitData& initData)
-    : HdSceneDelegate(initData.renderIndex, initData.delegateID),
-      HdMayaDelegate(initData),
-      _rprimPath(
-          initData.delegateID.AppendPath(SdfPath(std::string("rprims")))),
-      _sprimPath(
-          initData.delegateID.AppendPath(SdfPath(std::string("sprims")))),
-      _materialPath(
-          initData.delegateID.AppendPath(SdfPath(std::string("materials")))) {
+    : HdSceneDelegate(initData.renderIndex, initData.delegateID)
+    , HdMayaDelegate(initData)
+    , _rprimPath(initData.delegateID.AppendPath(SdfPath(std::string("rprims"))))
+    , _sprimPath(initData.delegateID.AppendPath(SdfPath(std::string("sprims"))))
+    , _materialPath(initData.delegateID.AppendPath(SdfPath(std::string("materials"))))
+{
     GetChangeTracker().AddCollection(TfToken("visible"));
 }
 
 void HdMayaDelegateCtx::InsertRprim(
-    const TfToken& typeId, const SdfPath& id, HdDirtyBits initialBits,
-    const SdfPath& instancerId) {
+    const TfToken& typeId,
+    const SdfPath& id,
+    const SdfPath& instancerId)
+{
     if (!instancerId.IsEmpty()) {
         GetRenderIndex().InsertInstancer(this, instancerId);
-        GetChangeTracker().InstancerInserted(id);
     }
+#if defined(HD_API_VERSION) && HD_API_VERSION >= 36
+    GetRenderIndex().InsertRprim(typeId, this, id);
+#else
     GetRenderIndex().InsertRprim(typeId, this, id, instancerId);
-    GetChangeTracker().RprimInserted(id, initialBits);
+#endif
 }
 
 void HdMayaDelegateCtx::InsertSprim(
-    const TfToken& typeId, const SdfPath& id, HdDirtyBits initialBits) {
+    const TfToken& typeId,
+    const SdfPath& id,
+    HdDirtyBits    initialBits)
+{
     GetRenderIndex().InsertSprim(typeId, this, id);
     GetChangeTracker().SprimInserted(id, initialBits);
 }
 
-void HdMayaDelegateCtx::RemoveRprim(const SdfPath& id) {
-    GetRenderIndex().RemoveRprim(id);
-}
+void HdMayaDelegateCtx::RemoveRprim(const SdfPath& id) { GetRenderIndex().RemoveRprim(id); }
 
-void HdMayaDelegateCtx::RemoveSprim(const TfToken& typeId, const SdfPath& id) {
+void HdMayaDelegateCtx::RemoveSprim(const TfToken& typeId, const SdfPath& id)
+{
     GetRenderIndex().RemoveSprim(typeId, id);
 }
 
-void HdMayaDelegateCtx::RemoveInstancer(const SdfPath& id) {
-    GetRenderIndex().RemoveInstancer(id);
-}
+void HdMayaDelegateCtx::RemoveInstancer(const SdfPath& id) { GetRenderIndex().RemoveInstancer(id); }
 
-SdfPath HdMayaDelegateCtx::GetPrimPath(const MDagPath& dg, bool isLight) {
+SdfPath HdMayaDelegateCtx::GetPrimPath(const MDagPath& dg, bool isLight)
+{
     if (isLight) {
         return _GetPrimPath(_sprimPath, dg);
     } else {
@@ -106,7 +120,8 @@ SdfPath HdMayaDelegateCtx::GetPrimPath(const MDagPath& dg, bool isLight) {
     }
 }
 
-SdfPath HdMayaDelegateCtx::GetMaterialPath(const MObject& obj) {
+SdfPath HdMayaDelegateCtx::GetMaterialPath(const MObject& obj)
+{
     return _GetMaterialPath(_materialPath, obj);
 }
 
