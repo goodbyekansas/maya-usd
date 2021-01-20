@@ -16,25 +16,23 @@
 //
 #include "importTranslator.h"
 
+#include <map>
+#include <string>
+
 #include <mayaUsd/fileio/jobs/jobArgs.h>
 #include <mayaUsd/fileio/jobs/readJob.h>
-#include <mayaUsd/fileio/shading/shadingModeRegistry.h>
 #include <mayaUsd/fileio/jobs/writeJob.h>
-
-#include "pxr/base/gf/interval.h"
-#include "pxr/base/vt/dictionary.h"
+#include <mayaUsd/fileio/shading/shadingModeRegistry.h>
 
 #include <maya/MFileObject.h>
 #include <maya/MPxFileTranslator.h>
 #include <maya/MString.h>
 #include <maya/MStringArray.h>
 
-#include <map>
-#include <string>
-
+#include <pxr/base/gf/interval.h>
+#include <pxr/base/vt/dictionary.h>
 
 PXR_NAMESPACE_OPEN_SCOPE
-
 
 /* static */
 void*
@@ -60,7 +58,6 @@ UsdMayaImportTranslator::reader(
         MPxFileTranslator::FileAccessMode  /*mode*/)
 {
     std::string fileName(file.fullName().asChar(), file.fullName().length());
-    std::map<std::string, std::string> variants;
 
     // If the input filename doesn't match the one in the importData we clear out
     // the import data. This would happen if the user performed an import with
@@ -175,15 +172,13 @@ UsdMayaImportTranslator::GetDefaultOptions()
         std::vector<std::string> entries;
         for (const std::pair<std::string, VtValue> keyValue :
                 UsdMayaJobImportArgs::GetDefaultDictionary()) {
-            if (keyValue.second.IsHolding<bool>()) {
-                entries.push_back(TfStringPrintf("%s=%d",
-                        keyValue.first.c_str(),
-                        static_cast<int>(keyValue.second.Get<bool>())));
-            }
-            else if (keyValue.second.IsHolding<std::string>()) {
+            bool canConvert;
+            std::string valueStr;
+            std::tie(canConvert, valueStr) = UsdMayaUtil::ValueToArgument(keyValue.second);
+            if (canConvert) {
                 entries.push_back(TfStringPrintf("%s=%s",
                         keyValue.first.c_str(),
-                        keyValue.second.Get<std::string>().c_str()));
+                        valueStr.c_str()));
             }
         }
         entries.push_back("readAnimData=0");

@@ -13,8 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-#include "pxr/pxr.h"
-#include "pxrUsd/api.h"
+#include <pxr/pxr.h>
 
 #include <mayaUsd/render/pxrUsdMayaGL/proxyShapeUI.h>
 #include <mayaUsd/nodes/proxyShapePlugin.h>
@@ -27,10 +26,8 @@
 #include "usdMaya/listShadingModesCommand.h"
 
 #include <mayaUsd/listeners/notice.h>
-#include <mayaUsd/nodes/pointBasedDeformerNode.h>
 #include "usdMaya/proxyShape.h"
 #include "usdMaya/referenceAssembly.h"
-#include <mayaUsd/nodes/stageNode.h>
 #include <mayaUsd/utils/undoHelperCommand.h>
 
 #include <maya/MFnPlugin.h>
@@ -43,8 +40,10 @@
 #include <mayaUsd/ufe/Global.h>
 #endif
 
-#include "pxr/base/plug/plugin.h"
-#include "pxr/base/plug/registry.h"
+#include <pxr/base/plug/plugin.h>
+#include <pxr/base/plug/registry.h>
+
+#include "api.h"
 
 PXR_NAMESPACE_USING_DIRECTIVE
 
@@ -67,21 +66,6 @@ initializePlugin(MObject obj)
 #endif
 
     status = MayaUsdProxyShapePlugin::initialize(plugin);
-    CHECK_MSTATUS_AND_RETURN_IT(status);
-
-    status = plugin.registerNode(
-        UsdMayaStageNode::typeName,
-        UsdMayaStageNode::typeId,
-        UsdMayaStageNode::creator,
-        UsdMayaStageNode::initialize);
-    CHECK_MSTATUS_AND_RETURN_IT(status);
-
-    status = plugin.registerNode(
-        UsdMayaPointBasedDeformerNode::typeName,
-        UsdMayaPointBasedDeformerNode::typeId,
-        UsdMayaPointBasedDeformerNode::creator,
-        UsdMayaPointBasedDeformerNode::initialize,
-        MPxNode::kDeformerNode);
     CHECK_MSTATUS_AND_RETURN_IT(status);
 
     status = plugin.registerShape(
@@ -132,24 +116,24 @@ initializePlugin(MObject obj)
 
     status = plugin.registerCommand(
         "usdExport",
-        UsdMayaExportCommand::creator,
-        UsdMayaExportCommand::createSyntax);
+        PxrMayaUSDExportCommand::creator,
+        PxrMayaUSDExportCommand::createSyntax);
     if (!status) {
         status.perror("registerCommand usdExport");
     }
 
     status = plugin.registerCommand(
         "usdImport",
-        UsdMayaImportCommand::creator,
-        UsdMayaImportCommand::createSyntax);
+        PxrMayaUSDImportCommand::creator,
+        PxrMayaUSDImportCommand::createSyntax);
     if (!status) {
         status.perror("registerCommand usdImport");
     }
 
     status = plugin.registerCommand(
         "usdListShadingModes",
-        UsdMayaListShadingModesCommand::creator,
-        UsdMayaListShadingModesCommand::createSyntax);
+        PxrMayaUSDListShadingModesCommand::creator,
+        PxrMayaUSDListShadingModesCommand::createSyntax);
     if (!status) {
         status.perror("registerCommand usdListShadingModes");
     }
@@ -262,12 +246,6 @@ uninitializePlugin(MObject obj)
     CHECK_MSTATUS(status);
 
     status = plugin.deregisterNode(UsdMayaProxyShape::typeId);
-    CHECK_MSTATUS(status);
-
-    status = plugin.deregisterNode(UsdMayaPointBasedDeformerNode::typeId);
-    CHECK_MSTATUS(status);
-
-    status = plugin.deregisterNode(UsdMayaStageNode::typeId);
     CHECK_MSTATUS(status);
 
     status = MayaUsdProxyShapePlugin::finalize(plugin);

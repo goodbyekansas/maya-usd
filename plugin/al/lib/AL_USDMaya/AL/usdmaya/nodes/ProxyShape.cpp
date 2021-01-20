@@ -14,23 +14,23 @@
 // limitations under the License.
 //
 /*
-#include "pxr/usdImaging/usdImaging/delegate.h"
-#include "pxr/usdImaging/usdImaging/version.h"
-#include "pxr/usdImaging/usdImagingGL/engine.h"
+#include <pxr/usdImaging/usdImaging/delegate.h>
+#include <pxr/usdImaging/usdImaging/version.h>
+#include <pxr/usdImaging/usdImagingGL/engine.h>
 
 */
 
-#include "maya/MEvaluationNode.h"
-#include "maya/MEventMessage.h"
-#include "maya/MFileIO.h"
-#include "maya/MItDependencyNodes.h"
-#include "maya/MFnPluginData.h"
-#include "maya/MFnReference.h"
-#include "maya/MGlobal.h"
-#include "maya/MHWGeometryUtilities.h"
-#include "maya/MNodeClass.h"
-#include "maya/MTime.h"
-#include "maya/MViewport2Renderer.h"
+#include <maya/MEvaluationNode.h>
+#include <maya/MEventMessage.h>
+#include <maya/MFileIO.h>
+#include <maya/MItDependencyNodes.h>
+#include <maya/MFnPluginData.h>
+#include <maya/MFnReference.h>
+#include <maya/MGlobal.h>
+#include <maya/MHWGeometryUtilities.h>
+#include <maya/MNodeClass.h>
+#include <maya/MTime.h>
+#include <maya/MViewport2Renderer.h>
 
 #include "AL/maya/utils/Utils.h"
 
@@ -53,18 +53,20 @@
 
 #include "AL/usd/transaction/TransactionManager.h"
 
-#include "pxr/usd/ar/resolver.h"
+#include <pxr/usd/ar/resolver.h>
 
-#include "pxr/usd/usdGeom/imageable.h"
-#include "pxr/usd/usdGeom/tokens.h"
-#include "pxr/usd/usd/prim.h"
-#include "pxr/usd/usd/stageCacheContext.h"
-#include "pxr/usd/usdUtils/stageCache.h"
-#include "pxr/usdImaging/usdImaging/delegate.h"
+#include <pxr/usd/usdGeom/imageable.h>
+#include <pxr/usd/usdGeom/tokens.h>
+#include <pxr/usd/usd/prim.h>
+#include <pxr/usd/usd/stageCacheContext.h>
+#include <pxr/usd/usdUtils/stageCache.h>
+#include <pxr/usdImaging/usdImaging/delegate.h>
 
 #include <mayaUsd/listeners/proxyShapeNotice.h>
 #include <mayaUsd/nodes/stageData.h>
 #include <mayaUsd/utils/utilFileSystem.h>
+
+#include <boost/filesystem.hpp>
 
 #if defined(WANT_UFE_BUILD)
 #include "ufe/path.h"
@@ -107,7 +109,6 @@ MObject ProxyShape::m_populationMaskIncludePaths = MObject::kNullObj;
 MObject ProxyShape::m_excludedTranslatedGeometry = MObject::kNullObj;
 MObject ProxyShape::m_timeOffset = MObject::kNullObj;
 MObject ProxyShape::m_timeScalar = MObject::kNullObj;
-MObject ProxyShape::m_outTime = MObject::kNullObj;
 MObject ProxyShape::m_layers = MObject::kNullObj;
 MObject ProxyShape::m_serializedSessionLayer = MObject::kNullObj;
 MObject ProxyShape::m_sessionLayerName = MObject::kNullObj;
@@ -124,14 +125,13 @@ MObject ProxyShape::m_transformTranslate = MObject::kNullObj;
 MObject ProxyShape::m_transformRotate = MObject::kNullObj;
 MObject ProxyShape::m_transformScale = MObject::kNullObj;
 MObject ProxyShape::m_stageDataDirty = MObject::kNullObj;
-MObject ProxyShape::m_stageCacheId = MObject::kNullObj;
 MObject ProxyShape::m_assetResolverConfig = MObject::kNullObj;
+MObject ProxyShape::m_variantFallbacks = MObject::kNullObj;
 MObject ProxyShape::m_visibleInReflections = MObject::kNullObj;
 MObject ProxyShape::m_visibleInRefractions = MObject::kNullObj;
 
 //----------------------------------------------------------------------------------------------------------------------
 std::vector<MObjectHandle> ProxyShape::m_unloadedProxyShapes;
-int m_stageCacheId;
 //----------------------------------------------------------------------------------------------------------------------
 UsdPrim ProxyShape::getUsdPrim(MDataBlock& dataBlock) const
 {
@@ -308,7 +308,6 @@ void ProxyShape::destroyGLImagingEngine()
   if(m_engine)
   {
     triggerEvent("DestroyGLEngine");
-    m_engine->InvalidateBuffers();
     delete m_engine;
     m_engine = nullptr;
   }
@@ -398,6 +397,18 @@ MStatus ProxyShape::setDependentsDirty(const MPlug& plugBeingDirtied, MPlugArray
   {
     MHWRender::MRenderer::setGeometryDrawDirty(thisMObject(), true);
   }
+
+  if (plugBeingDirtied == outStageData() ||
+    // All the plugs that affect outStageDataAttr
+    plugBeingDirtied == filePath() ||
+    plugBeingDirtied == primPath() ||
+    plugBeingDirtied == m_populationMaskIncludePaths ||
+    plugBeingDirtied == m_stageDataDirty ||
+    plugBeingDirtied == m_assetResolverConfig)
+  {
+    MayaUsdProxyStageInvalidateNotice(*this).Send();
+  }
+
   return MPxSurfaceShape::setDependentsDirty(plugBeingDirtied, plugs);
 }
 
@@ -431,7 +442,6 @@ bool ProxyShape::getRenderAttris(UsdImagingGLRenderParams& attribs, const MHWRen
     attribs.drawMode = UsdImagingGLDrawMode::DRAW_WIREFRAME;
   }
   else
-#if MAYA_API_VERSION >= 201600
   if(displayStyle & MHWRender::MFrameContext::kFlatShaded) {
     attribs.drawMode = UsdImagingGLDrawMode::DRAW_SHADED_FLAT;
     if ((displayStatus == MHWRender::kActive) ||
@@ -441,7 +451,6 @@ bool ProxyShape::getRenderAttris(UsdImagingGLRenderParams& attribs, const MHWRen
     }
   }
   else
-#endif
   if(displayStyle & MHWRender::MFrameContext::kGouraudShaded) {
     attribs.drawMode = UsdImagingGLDrawMode::DRAW_SHADED_SMOOTH;
     if ((displayStatus == MHWRender::kActive) ||
@@ -461,16 +470,12 @@ bool ProxyShape::getRenderAttris(UsdImagingGLRenderParams& attribs, const MHWRen
   // set the time for the scene
   attribs.frame = outTimePlug().asMTime().as(MTime::uiUnit());
 
-#if MAYA_API_VERSION >= 201603
   if(displayStyle & MHWRender::MFrameContext::kBackfaceCulling) {
     attribs.cullStyle = UsdImagingGLCullStyle::CULL_STYLE_BACK;
   }
   else {
     attribs.cullStyle = UsdImagingGLCullStyle::CULL_STYLE_NOTHING;
   }
-#else
-  attribs.cullStyle = Engine::CULL_STYLE_NOTHING;
-#endif
 
   const float complexities[] = {1.05f, 1.15f, 1.25f, 1.35f, 1.45f, 1.55f, 1.65f, 1.75f, 1.9f}; 
   attribs.complexity = complexities[complexityPlug().asInt()];
@@ -553,7 +558,7 @@ MStatus ProxyShape::initialise()
     inheritTimeAttr("time", kCached | kConnectable | kReadable | kWritable | kStorable | kAffectsAppearance);
     m_timeOffset = addTimeAttr("timeOffset", "tmo", MTime(0.0), kCached | kConnectable | kReadable | kWritable | kStorable | kAffectsAppearance);
     m_timeScalar = addDoubleAttr("timeScalar", "tms", 1.0, kCached | kConnectable | kReadable | kWritable | kStorable | kAffectsAppearance);
-    m_outTime = addTimeAttr("outTime", "otm", MTime(0.0), kCached | kConnectable | kReadable | kAffectsAppearance);
+    inheritTimeAttr("outTime", kCached | kConnectable | kReadable | kAffectsAppearance);
     m_layers = addMessageAttr("layers", "lys", kWritable | kReadable | kConnectable | kHidden);
 
     addFrame("OpenGL Display");
@@ -580,18 +585,20 @@ MStatus ProxyShape::initialise()
 
     m_stageDataDirty = addBoolAttr("stageDataDirty", "sdd", false, kWritable | kAffectsAppearance | kInternal);
 
-    m_stageCacheId = addInt32Attr("stageCacheId", "stcid", -1, kCached | kConnectable | kReadable | kInternal );
+    inheritInt32Attr("stageCacheId", kCached | kConnectable | kReadable | kInternal );
 
     m_assetResolverConfig = addStringAttr("assetResolverConfig", "arc", kReadable | kWritable | kConnectable | kStorable | kAffectsAppearance | kInternal);
+    m_variantFallbacks = addStringAttr("variantFallbacks", "vfs", kReadable | kWritable | kConnectable | kStorable | kAffectsAppearance | kInternal);
 
-    AL_MAYA_CHECK_ERROR(attributeAffects(time(), m_outTime), errorString);
-    AL_MAYA_CHECK_ERROR(attributeAffects(m_timeOffset, m_outTime), errorString);
-    AL_MAYA_CHECK_ERROR(attributeAffects(m_timeScalar, m_outTime), errorString);
+    AL_MAYA_CHECK_ERROR(attributeAffects(time(), outTime()), errorString);
+    AL_MAYA_CHECK_ERROR(attributeAffects(m_timeOffset, outTime()), errorString);
+    AL_MAYA_CHECK_ERROR(attributeAffects(m_timeScalar, outTime()), errorString);
     // file path and prim path affects on out stage data already done in base
     // class.
     AL_MAYA_CHECK_ERROR(attributeAffects(m_populationMaskIncludePaths, outStageData()), errorString);
     AL_MAYA_CHECK_ERROR(attributeAffects(m_stageDataDirty, outStageData()), errorString);
     AL_MAYA_CHECK_ERROR(attributeAffects(m_assetResolverConfig, outStageData()), errorString);
+    AL_MAYA_CHECK_ERROR(attributeAffects(m_variantFallbacks, outStageData()), errorString);
   }
   catch (const MStatus& status)
   {
@@ -743,7 +750,21 @@ void ProxyShape::serialize(UsdStageRefPtr stage, LayerManager* layerManager)
         // ...make sure for the old Maya scene, we clear the sessionLayerName plug so there is no
         // complaint when we open it.
         sessionLayerNamePlug().setValue("");
-      }      
+      }
+
+      auto rootLayer = stage->GetRootLayer();
+      if (rootLayer->IsAnonymous())
+      {
+        // For an anonymous root layer we need to update the file path to match the new
+        // identifier the layer manager may have associated the layer with.
+        MPlug filePathPlug = this->filePathPlug();
+        const std::string currentRootLayerId = AL::maya::utils::convert(filePathPlug.asString());
+        const std::string &newRootLayerId = rootLayer->GetIdentifier();
+        if (currentRootLayerId != newRootLayerId)
+        {
+          filePathPlug.setString(AL::maya::utils::convert(newRootLayerId));
+        }
+      }
 
       // Then add in the current edit target
       trackEditTargetLayer(layerManager);
@@ -1117,7 +1138,7 @@ void ProxyShape::loadStage()
   AL_BEGIN_PROFILE_SECTION(LoadStage);
   MDataBlock dataBlock = forceCache();
 
-  const int stageIdVal = inputInt32Value(dataBlock, m_stageCacheId);
+  const int stageIdVal = inputInt32Value(dataBlock, stageCacheId());
   UsdStageCache::Id stageId = UsdStageCache::Id().FromLongInt(stageIdVal);
   MString file = inputStringValue(dataBlock, filePath());
 
@@ -1156,6 +1177,12 @@ void ProxyShape::loadStage()
       MGlobal::displayError(MString("ProxyShape::loadStage called with non-existent stageCacheId ") + stageId.ToString().c_str());
       stageId = UsdStageCache::Id();
     }
+
+    // Save variant fallbacks from session layer to Maya node attribute
+    if (m_stage)
+    {
+      saveVariantFallbacks(getVariantFallbacksFromLayer(m_stage->GetSessionLayer()), dataBlock);
+    }
   }
   else
   {
@@ -1174,30 +1201,67 @@ void ProxyShape::loadStage()
 
     TF_DEBUG(ALUSDMAYA_TRANSLATORS).Msg("ProxyShape::reloadStage original USD file path is %s\n", fileString.c_str());
 
-    boost::filesystem::path filestringPath(fileString);
-    if (filestringPath.is_absolute())
+    SdfLayerRefPtr rootLayer;
+    if (SdfLayer::IsAnonymousLayerIdentifier(fileString))
     {
-      fileString = UsdMayaUtilFileSystem::resolvePath(fileString);
-      TF_DEBUG(ALUSDMAYA_TRANSLATORS).Msg("ProxyShape::reloadStage resolved the USD file path to %s\n",
-                                          fileString.c_str());
+      // For anonymous root layer we must explicitly ask for from the layer manager.
+      // This is because USD does not allow us to create a new anonymous SdfLayer
+      // with the exact same identifier. The best we can do is to ask the layer manager
+      // to create the anonymous layer, and let it manage the identifier mappings.
+      if (auto layerManager = LayerManager::findManager())
+      {
+        rootLayer = layerManager->findLayer(fileString);
+      }
+
+      if (rootLayer)
+      {
+        TF_DEBUG(ALUSDMAYA_TRANSLATORS).Msg(
+          "ProxyShape::reloadStage found anonymous layer %s from layer manager\n",
+          fileString.c_str()
+        );
+      }
+      else
+      {
+        const std::string tag = SdfLayer::GetDisplayNameFromIdentifier(fileString);
+        rootLayer = SdfLayer::CreateAnonymous(tag);
+        if (rootLayer)
+        {
+          TF_DEBUG(ALUSDMAYA_TRANSLATORS).Msg(
+            "ProxyShape::reloadStage created anonymous layer %s (renamed to %s)\n",
+            fileString.c_str(),
+            rootLayer->GetIdentifier().c_str()
+          );
+        }
+      }
     }
     else
     {
-      fileString = UsdMayaUtilFileSystem::resolveRelativePathWithinMayaContext(thisMObject(), fileString);
-      TF_DEBUG(ALUSDMAYA_TRANSLATORS).Msg("ProxyShape::reloadStage resolved the relative USD file path to %s\n",
-                                          fileString.c_str());
+      boost::filesystem::path filestringPath(fileString);
+      if (filestringPath.is_absolute())
+      {
+        fileString = UsdMayaUtilFileSystem::resolvePath(fileString);
+        TF_DEBUG(ALUSDMAYA_TRANSLATORS).Msg("ProxyShape::reloadStage resolved the USD file path to %s\n",
+                                            fileString.c_str());
+      }
+      else
+      {
+        fileString = UsdMayaUtilFileSystem::resolveRelativePathWithinMayaContext(thisMObject(), fileString);
+        TF_DEBUG(ALUSDMAYA_TRANSLATORS).Msg("ProxyShape::reloadStage resolved the relative USD file path to %s\n",
+                                            fileString.c_str());
+      }
+
+      // Fall back on providing the path "as is" to USD
+      if (fileString.empty())
+      {
+        fileString.assign(file.asChar(), file.length());
+      }
+
+      TF_DEBUG(ALUSDMAYA_TRANSLATORS).Msg("ProxyShape::loadStage called for the usd file: %s\n", fileString.c_str());
+      rootLayer = SdfLayer::FindOrOpen(fileString);
     }
 
-    // Fall back on providing the path "as is" to USD
-    if (fileString.empty())
-    {
-      fileString.assign(file.asChar(), file.length());
-    }
-
-    TF_DEBUG(ALUSDMAYA_TRANSLATORS).Msg("ProxyShape::loadStage called for the usd file: %s\n", fileString.c_str());
-
-    // Only try to create a stage for layers that can be opened.
-    if (SdfLayerRefPtr rootLayer = SdfLayer::FindOrOpen(fileString))
+     // Only try to create a stage for layers that can be opened.
+    if (rootLayer)
     {
       MStatus status;
       SdfLayerRefPtr sessionLayer;
@@ -1256,6 +1320,11 @@ void ProxyShape::loadStage()
         }
         AL_END_PROFILE_SECTION();
 
+        AL_BEGIN_PROFILE_SECTION(UpdateGlobalVariantFallbacks);
+        PcpVariantFallbackMap defaultVariantFallbacks;
+        PcpVariantFallbackMap fallbacks(updateVariantFallbacks(defaultVariantFallbacks, dataBlock));
+        AL_END_PROFILE_SECTION();
+
         AL_BEGIN_PROFILE_SECTION(UsdStageOpen);
         {
           UsdStageCacheContext ctx(StageCache::Get());
@@ -1278,7 +1347,7 @@ void ProxyShape::loadStage()
           m_stage->ExpandPopulationMask();
 
           stageId = StageCache::Get().Insert(m_stage);
-          outputInt32Value(dataBlock, m_stageCacheId, stageId.ToLongInt());
+          outputInt32Value(dataBlock, stageCacheId(), stageId.ToLongInt());
 
           // Set the stage in datablock so it's ready in case it needs to be accessed
           MObject data;
@@ -1293,6 +1362,17 @@ void ProxyShape::loadStage()
           trackEditTargetLayer();
         }
         AL_END_PROFILE_SECTION();
+
+        AL_BEGIN_PROFILE_SECTION(ResetGlobalVariantFallbacks);
+        // reset only if the global variant fallbacks has been modified
+        if (!fallbacks.empty())
+        {
+          saveVariantFallbacks(convertVariantFallbacksToStr(fallbacks), dataBlock);
+          // restore default value
+          UsdStage::SetGlobalVariantFallbacks(defaultVariantFallbacks);
+        }
+        AL_END_PROFILE_SECTION();
+
       AL_END_PROFILE_SECTION();
     }
     else if (!fileString.empty())
@@ -1432,7 +1512,7 @@ MStatus ProxyShape::computeOutStageData(const MPlug& plug, MDataBlock& dataBlock
     return MS::kFailure;
   }
 
-  UsdMayaProxyStageSetNotice(*this).Send();
+  MayaUsdProxyStageSetNotice(*this).Send();
 
   return status;
 }
@@ -1479,7 +1559,7 @@ MStatus ProxyShape::computeOutputTime(const MPlug& plug, MDataBlock& dataBlock, 
   MTime inTimeOffset = inputTimeValue(dataBlock, m_timeOffset);
   double inTimeScalar = inputDoubleValue(dataBlock, m_timeScalar);
   currentTime.setValue((inTime.as(MTime::uiUnit()) - inTimeOffset.as(MTime::uiUnit())) * inTimeScalar);
-  return outputTimeValue(dataBlock, m_outTime, currentTime);
+  return outputTimeValue(dataBlock, outTime(), currentTime);
 }
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -1489,14 +1569,14 @@ MStatus ProxyShape::compute(const MPlug& plug, MDataBlock& dataBlock)
   // When shape is computed Maya will request redraw by itself
   m_requestedRedraw = true;
   MTime currentTime;
-  if(plug == m_outTime)
+  if(plug == outTime())
   {
     return computeOutputTime(plug, dataBlock, currentTime);
   }
   else
   if(plug == outStageData())
   {
-    MStatus status = computeOutputTime(MPlug(plug.node(), m_outTime), dataBlock, currentTime);
+    MStatus status = computeOutputTime(MPlug(plug.node(), outTime()), dataBlock, currentTime);
     return status == MS::kSuccess ? computeOutStageData(plug, dataBlock) : status;
   }
   // Completely skip over parent class compute(), because it has inStageData
@@ -1514,18 +1594,18 @@ bool ProxyShape::setInternalValue(const MPlug& plug, const MDataHandle& dataHand
   // the datablock for us, but this would be too late for these subfunctions
   TF_DEBUG(ALUSDMAYA_EVALUATION).Msg("ProxyShape::setInternalValue %s\n", plug.name().asChar());
 
-  if(plug == filePath() || plug == m_assetResolverConfig || plug == m_stageCacheId)
+  if(plug == filePath() || plug == m_assetResolverConfig || plug == stageCacheId() || plug == m_variantFallbacks)
   {
     m_filePathDirty = true;
     
     // can't use dataHandle.datablock(), as this is a temporary datahandle
     MDataBlock datablock = forceCache();
 
-    if (plug == filePath() || plug == m_assetResolverConfig)
+    if (plug == filePath() || plug == m_assetResolverConfig || plug == m_variantFallbacks)
     {
       AL_MAYA_CHECK_ERROR_RETURN_VAL(outputStringValue(datablock, plug, dataHandle.asString()),
                                      false,
-                                     "ProxyShape::setInternalValue - error setting filePath or assetResolverConfig");
+                                     "ProxyShape::setInternalValue - error setting filePath, assetResolverConfig or variantFallbacks");
     }
     else
     {
@@ -1615,7 +1695,7 @@ void ProxyShape::CacheEmptyBoundingBox(MBoundingBox& cachedBBox)
 //----------------------------------------------------------------------------------------------------------------------
 UsdTimeCode ProxyShape::GetOutputTime(MDataBlock dataBlock) const
 {
-  return UsdTimeCode(inputDoubleValue(dataBlock, m_outTime));
+  return UsdTimeCode(inputDoubleValue(dataBlock, outTime()));
 }
 
 //----------------------------------------------------------------------------------------------------------------------

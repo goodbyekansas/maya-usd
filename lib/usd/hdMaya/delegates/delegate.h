@@ -16,32 +16,26 @@
 #ifndef HDMAYA_DELEGATE_H
 #define HDMAYA_DELEGATE_H
 
-#include <pxr/pxr.h>
+#include <memory>
 
+#include <maya/MDrawContext.h>
+#include <maya/MPointArray.h>
+#include <maya/MSelectionContext.h>
+#include <maya/MSelectionList.h>
+
+#include <pxr/pxr.h>
 #include <pxr/imaging/glf/glew.h>
 #include <pxr/imaging/hd/engine.h>
 #include <pxr/imaging/hd/renderIndex.h>
 #include <pxr/imaging/hd/selection.h>
-#if USD_VERSION_NUM >= 1911
-#include <pxr/imaging/hd/rendererPlugin.h>
-#else
-#include <pxr/imaging/hdx/rendererPlugin.h>
-PXR_NAMESPACE_OPEN_SCOPE
-using HdRendererPlugin = HdxRendererPlugin;
-PXR_NAMESPACE_CLOSE_SCOPE
-#endif
-
+#include <pxr/imaging/hdx/pickTask.h>
 #include <pxr/imaging/hdx/taskController.h>
 #include <pxr/usd/sdf/path.h>
 
-#include <maya/MDagPath.h>
-#include <maya/MDrawContext.h>
-#include <maya/MSelectionList.h>
+#include <hdMaya/api.h>
+#include <hdMaya/delegates/params.h>
 
-#include <memory>
-
-#include "../api.h"
-#include "params.h"
+#include <pxr/imaging/hd/rendererPlugin.h>
 
 #if WANT_UFE_BUILD
 #include <ufe/selection.h>
@@ -102,6 +96,16 @@ public:
 
     virtual bool SupportsUfeSelection() { return false; }
 #endif // WANT_UFE_BUILD
+
+#if MAYA_API_VERSION >= 20210000
+    virtual void PopulateSelectionList(
+        const HdxPickHitVector& hits,
+        const MHWRender::MSelectionInfo& selectInfo,
+        MSelectionList& mayaSelection,
+        MPointArray& worldSpaceHitPts)
+    {
+    }
+#endif
 
     void SetLightsEnabled(const bool enabled) { _lightsEnabled = enabled; }
     bool GetLightsEnabled() { return _lightsEnabled; }

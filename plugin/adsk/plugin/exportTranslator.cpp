@@ -16,21 +16,19 @@
 //
 #include "exportTranslator.h"
 
-#include <string>
 #include <set>
 #include <sstream>
-
-#include <mayaUsd/fileio/jobs/jobArgs.h>
-#include <mayaUsd/fileio/shading/shadingModeRegistry.h>
-#include <mayaUsd/fileio/jobs/writeJob.h>
-#include <mayaUsd/fileio/utils/writeUtil.h>
+#include <string>
 
 #include <maya/MFileObject.h>
 #include <maya/MGlobal.h>
 #include <maya/MSelectionList.h>
 #include <maya/MString.h>
 
-
+#include <mayaUsd/fileio/jobs/jobArgs.h>
+#include <mayaUsd/fileio/jobs/writeJob.h>
+#include <mayaUsd/fileio/shading/shadingModeRegistry.h>
+#include <mayaUsd/fileio/utils/writeUtil.h>
 
 PXR_NAMESPACE_USING_DIRECTIVE
 
@@ -53,6 +51,12 @@ MStatus
 UsdMayaExportTranslator::writer(const MFileObject &file, 
                  const MString &optionsString,
                  MPxFileTranslator::FileAccessMode mode ) {
+
+    // If we are in neither of these modes then there won't be anything to do
+    if (mode != MPxFileTranslator::kExportActiveAccessMode && 
+        mode != MPxFileTranslator::kExportAccessMode) {
+        return MS::kSuccess;
+    }
 
     std::string fileName(file.fullName().asChar(), file.fullName().length());
     VtDictionary userArgs;
@@ -125,24 +129,9 @@ UsdMayaExportTranslator::writer(const MFileObject &file,
     }
 
     MSelectionList objSelList;
-    if(mode == MPxFileTranslator::kExportActiveAccessMode) {
-        // Get selected objects
-        MGlobal::getActiveSelectionList(objSelList);
-    } else if(mode == MPxFileTranslator::kExportAccessMode) {
-        // Get all objects at DAG root
-        objSelList.add("|*", true);
-    }
-
-    // Convert selection list to jobArgs dagPaths
     UsdMayaUtil::MDagPathSet dagPaths;
-    unsigned int len = objSelList.length();
-    for (unsigned int i=0; i < len; i++) {
-        MDagPath dagPath;
-        if (objSelList.getDagPath(i, dagPath) == MS::kSuccess) {
-            dagPaths.insert(dagPath);
-        }
-    }
-    
+    GetFilteredSelectionToExport((mode == MPxFileTranslator::kExportActiveAccessMode), objSelList, dagPaths);
+
     if (dagPaths.empty()) {
         TF_WARN("No DAG nodes to export. Skipping.");
         return MS::kSuccess;
@@ -153,7 +142,7 @@ UsdMayaExportTranslator::writer(const MFileObject &file,
     PXR_NS::UsdMayaJobExportArgs jobArgs = PXR_NS::UsdMayaJobExportArgs::CreateFromDictionary(
             userArgs, dagPaths, timeSamples);
     
-    len = filteredTypes.length();
+    unsigned int len = filteredTypes.length();
     for (unsigned int i=0; i < len; ++i) {
         jobArgs.AddFilteredTypeName(filteredTypes[i].asChar());
     }
@@ -207,11 +196,11 @@ UsdMayaExportTranslator::GetDefaultOptions()
         std::ostringstream optionsStream;
         for (const std::pair<std::string, VtValue> keyValue :
                 PXR_NS::UsdMayaJobExportArgs::GetDefaultDictionary()) {
-            if (keyValue.second.IsHolding<bool>()) {
-                optionsStream << keyValue.first.c_str() << "=" << static_cast<int>(keyValue.second.Get<bool>()) << ";";
-            }
-            else if (keyValue.second.IsHolding<std::string>()) {
-                optionsStream << keyValue.first.c_str() << "=" << keyValue.second.Get<std::string>().c_str() << ";";
+            bool canConvert;
+            std::string valueStr;
+            std::tie(canConvert, valueStr) = UsdMayaUtil::ValueToArgument(keyValue.second);
+            if (canConvert) {
+                optionsStream << keyValue.first.c_str() << "=" << valueStr.c_str() << ";";
             }
         }
         optionsStream << "animation=0;";

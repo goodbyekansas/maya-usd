@@ -15,37 +15,34 @@
 //
 #include "sceneDelegate.h"
 
-#include <pxr/base/gf/matrix4d.h>
-#include <pxr/base/gf/range3d.h>
-#include <pxr/base/tf/type.h>
-
-#include <pxr/usd/sdf/assetPath.h>
-#include <pxr/usd/usdGeom/tokens.h>
-
-#include <pxr/imaging/hd/camera.h>
-#include <pxr/imaging/hd/material.h>
-#include <pxr/imaging/hd/mesh.h>
-#include <pxr/imaging/hd/rprim.h>
-#include <pxr/imaging/hd/tokens.h>
-
-#include <pxr/imaging/hdx/renderSetupTask.h>
-#include <pxr/imaging/hdx/renderTask.h>
-#include <pxr/imaging/hdx/tokens.h>
-
-#include <maya/MDGMessage.h>
 #include <maya/MDagPath.h>
 #include <maya/MDagPathArray.h>
+#include <maya/MDGMessage.h>
 #include <maya/MItDag.h>
 #include <maya/MMatrixArray.h>
 #include <maya/MObjectHandle.h>
 #include <maya/MString.h>
 
-#include "../adapters/adapterRegistry.h"
-#include "../adapters/mayaAttrs.h"
-#include "delegateDebugCodes.h"
-#include "delegateRegistry.h"
-#include "../utils.h"
+#include <pxr/base/gf/matrix4d.h>
+#include <pxr/base/gf/range3d.h>
+#include <pxr/base/tf/type.h>
+#include <pxr/imaging/hd/camera.h>
 #include <pxr/imaging/hd/light.h>
+#include <pxr/imaging/hd/material.h>
+#include <pxr/imaging/hd/mesh.h>
+#include <pxr/imaging/hd/rprim.h>
+#include <pxr/imaging/hd/tokens.h>
+#include <pxr/imaging/hdx/renderSetupTask.h>
+#include <pxr/imaging/hdx/renderTask.h>
+#include <pxr/imaging/hdx/tokens.h>
+#include <pxr/usd/sdf/assetPath.h>
+#include <pxr/usd/usdGeom/tokens.h>
+
+#include <hdMaya/adapters/adapterRegistry.h>
+#include <hdMaya/adapters/mayaAttrs.h>
+#include <hdMaya/delegates/delegateDebugCodes.h>
+#include <hdMaya/delegates/delegateRegistry.h>
+#include <hdMaya/utils.h>
 
 PXR_NAMESPACE_OPEN_SCOPE
 
@@ -214,6 +211,13 @@ void HdMayaSceneDelegate::Populate() {
 }
 
 void HdMayaSceneDelegate::PreFrame(const MHWRender::MDrawContext& context) {
+    bool enableMaterials = !(context.getDisplayStyle() & MHWRender::MFrameContext::kDefaultMaterial);
+    if (enableMaterials != _enableMaterials) {
+        _enableMaterials = enableMaterials;
+        for (const auto& shape : _shapeAdapters)
+            shape.second->MarkDirty(HdChangeTracker::DirtyMaterialId);
+    }
+
     if (!_materialTagsChanged.empty()) {
         if (IsHdSt()) {
             for (const auto& id : _materialTagsChanged) {
@@ -663,6 +667,42 @@ void HdMayaSceneDelegate::PopulateSelectedPaths(
         MFn::kShape);
 }
 
+#if MAYA_API_VERSION >= 20210000
+void HdMayaSceneDelegate::PopulateSelectionList(
+    const HdxPickHitVector&          hits,
+    const MHWRender::MSelectionInfo& selectInfo,
+    MSelectionList&                  selectionList,
+    MPointArray&                     worldSpaceHitPts)
+{
+    for (const HdxPickHit& hit : hits) {
+        _FindAdapter<HdMayaDagAdapter>(
+            hit.objectId,
+            [&hit, &selectionList, &worldSpaceHitPts](HdMayaDagAdapter* a) {
+                if (a->IsInstanced()) {
+                    MDagPathArray dagPaths;
+                    MDagPath::getAllPathsTo(a->GetDagPath().node(), dagPaths);
+
+                    const int numInstances = dagPaths.length();
+                    if (hit.instanceIndex >= 0 && hit.instanceIndex < numInstances) {
+                        selectionList.add(dagPaths[hit.instanceIndex]);
+                        worldSpaceHitPts.append(
+                            hit.worldSpaceHitPoint[0],
+                            hit.worldSpaceHitPoint[1],
+                            hit.worldSpaceHitPoint[2]);
+                    }
+                } else {
+                    selectionList.add(a->GetDagPath());
+                    worldSpaceHitPts.append(
+                        hit.worldSpaceHitPoint[0],
+                        hit.worldSpaceHitPoint[1],
+                        hit.worldSpaceHitPoint[2]);
+                }
+            },
+            _shapeAdapters);
+    }
+}
+#endif
+
 HdMeshTopology HdMayaSceneDelegate::GetMeshTopology(const SdfPath& id) {
     TF_DEBUG(HDMAYA_DELEGATE_GET_MESH_TOPOLOGY)
         .Msg("HdMayaSceneDelegate::GetMeshTopology(%s)\n", id.GetText());
@@ -852,6 +892,18 @@ GfMatrix4d HdMayaSceneDelegate::GetInstancerTransform(
     return GfMatrix4d(1.0);
 }
 
+#if defined(HD_API_VERSION) && HD_API_VERSION >= 34
+SdfPath HdMayaSceneDelegate::GetScenePrimPath(
+    const SdfPath& rprimPath, int instanceIndex,
+    HdInstancerContext *instancerContext) {
+    return rprimPath;
+}
+#elif defined(HD_API_VERSION) && HD_API_VERSION >= 33
+SdfPath HdMayaSceneDelegate::GetScenePrimPath(
+    const SdfPath& rprimPath, int instanceIndex) {
+    return rprimPath;
+}
+#else
 SdfPath HdMayaSceneDelegate::GetPathForInstanceIndex(
     const SdfPath& protoPrimPath, int instanceIndex, int* absoluteInstanceIndex,
     SdfPath* rprimPath, SdfPathVector* instanceContext) {
@@ -860,6 +912,7 @@ SdfPath HdMayaSceneDelegate::GetPathForInstanceIndex(
     }
     return {};
 }
+#endif
 
 bool HdMayaSceneDelegate::GetVisible(const SdfPath& id) {
     TF_DEBUG(HDMAYA_DELEGATE_GET_VISIBLE)
@@ -978,6 +1031,8 @@ VtDictionary HdMayaSceneDelegate::GetMaterialMetadata(
 SdfPath HdMayaSceneDelegate::GetMaterialId(const SdfPath& id) {
     TF_DEBUG(HDMAYA_DELEGATE_GET_MATERIAL_ID)
         .Msg("HdMayaSceneDelegate::GetMaterialId(%s)\n", id.GetText());
+    if (!_enableMaterials)
+        return {};
     auto shapeAdapter = TfMapLookupPtr(_shapeAdapters, id);
     if (shapeAdapter == nullptr) { return _fallbackMaterial; }
     auto material = shapeAdapter->get()->GetMaterial();
@@ -1073,19 +1128,20 @@ HdTextureResourceSharedPtr HdMayaSceneDelegate::GetTextureResource(
 bool HdMayaSceneDelegate::_CreateMaterial(
     const SdfPath& id, const MObject& obj) {
     TF_DEBUG(HDMAYA_ADAPTER_MATERIALS)
-        .Msg(
-            "HdMayaSceneDelegate::_CreateMaterial(%s)\n",
-            id.GetText());
-    auto materialCreator =
-        HdMayaAdapterRegistry::GetMaterialAdapterCreator(obj);
-    if (materialCreator == nullptr) { return false; }
+        .Msg("HdMayaSceneDelegate::_CreateMaterial(%s)\n", id.GetText());
+
+    auto materialCreator = HdMayaAdapterRegistry::GetMaterialAdapterCreator(obj);
+    if (materialCreator == nullptr) {
+        return false;
+    }
     auto materialAdapter = materialCreator(id, this, obj);
     if (materialAdapter == nullptr || !materialAdapter->IsSupported()) {
         return false;
     }
+
     materialAdapter->Populate();
     materialAdapter->CreateCallbacks();
-    _materialAdapters.insert({id, materialAdapter});
+    _materialAdapters.emplace(id, std::move(materialAdapter));
     return true;
 }
 

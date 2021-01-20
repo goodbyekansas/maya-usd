@@ -10,8 +10,8 @@ endif()
 set(NEED_BOOST_FILESYSTEM ON)
 set(CMAKE_VERBOSE_MAKEFILE OFF)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
-if(NOT DEFINED BOOST_ROOT)
-    set(BOOST_ROOT ${PXR_USD_LOCATION})
+if(NOT DEFINED ENV{BOOST_ROOT})
+    set(ENV{BOOST_ROOT} ${PXR_USD_LOCATION})
 endif()
 
 set(INSTALL_DIR_SUFFIX plugin/al)
@@ -27,8 +27,13 @@ option(SKIP_USDMAYA_TESTS "Build tests" OFF)
 set(Boost_FIND_COMPONENTS
      python
      thread
-     filesystem
 )
+if(NEED_BOOST_FILESYSTEM)
+    list(APPEND Boost_FIND_COMPONENTS
+        filesystem
+        system
+    )
+endif()
 if(WIN32)
     list(APPEND Boost_FIND_COMPONENTS
         chrono
